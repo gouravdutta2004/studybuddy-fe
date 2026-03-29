@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import api from '../api/axios';
 import SessionCard from '../components/SessionCard';
 import { useAuth } from '../context/AuthContext';
-import { Calendar, Plus, X, Download } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, X, Download, List as ListIcon, ChevronLeft, ChevronRight, Clock, MapPin, Video, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import RatingModal from '../components/RatingModal';
-import { Container, Typography, Box, Button, Tabs, Tab, Grid, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, FormControlLabel, Switch, CircularProgress, useTheme } from '@mui/material';
+import { Container, Typography, Box, Button, Tabs, Tab, Grid, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, FormControlLabel, Switch, CircularProgress, useTheme, ToggleButton, ToggleButtonGroup, Card, CardContent, Chip, Avatar } from '@mui/material';
+import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, format, isSameMonth, isSameDay, addMonths, subMonths, parseISO, isPast } from 'date-fns';
 
 const defaultForm = { title: '', description: '', subject: '', scheduledAt: '', duration: 60, isOnline: true, meetingLink: '', location: '', maxParticipants: 5 };
 
@@ -20,6 +21,11 @@ export default function Sessions() {
   const [form, setForm] = useState(defaultForm);
   const [creating, setCreating] = useState(false);
   const [ratingSession, setRatingSession] = useState(null);
+
+  // Calendar State
+  const [viewMode, setViewMode] = useState('list');
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [calendarSessionObj, setCalendarSessionObj] = useState(null);
 
   const fetchSessions = async () => {
     try {
@@ -84,6 +90,16 @@ export default function Sessions() {
 
   const displaySessions = tabIndex === 0 ? sessions : mySessions;
 
+  // Calendar Engine
+  const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
+  const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
+
+  const monthStart = startOfMonth(currentMonth);
+  const monthEnd = endOfMonth(monthStart);
+  const startDate = startOfWeek(monthStart);
+  const endDate = endOfWeek(monthEnd);
+  const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
@@ -100,7 +116,21 @@ export default function Sessions() {
         <Typography variant="h4" fontWeight={800} color="text.primary">
           Study Sessions
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
+          <ToggleButtonGroup
+            value={viewMode}
+            exclusive
+            onChange={(e, newMode) => newMode && setViewMode(newMode)}
+            size="small"
+            sx={{ 
+              bgcolor: 'rgba(255,255,255,0.02)', borderRadius: 2, p: 0.5,
+              '& .MuiToggleButton-root': { border: 'none', borderRadius: 1.5, color: 'text.secondary', px: 2 }, 
+              '& .Mui-selected': { bgcolor: '#6366f1 !important', color: 'white !important' } 
+            }}
+          >
+            <ToggleButton value="list"><ListIcon size={18} /></ToggleButton>
+            <ToggleButton value="calendar"><CalendarIcon size={18} /></ToggleButton>
+          </ToggleButtonGroup>
           <Button 
             variant="outlined" 
             color="primary" 
@@ -212,9 +242,69 @@ export default function Sessions() {
         </Tabs>
       </Box>
 
-      {displaySessions.length === 0 ? (
+      {/* Calendar Specific Action Modal */}
+      <Dialog open={!!calendarSessionObj} onClose={() => setCalendarSessionObj(null)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 4, bgcolor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)' } }}>
+        {calendarSessionObj && (
+          <>
+            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 800, pb: 1, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              Session Details
+              <IconButton onClick={() => setCalendarSessionObj(null)} size="small" sx={{ color: 'rgba(255,255,255,0.5)' }}><X size={20} /></IconButton>
+            </DialogTitle>
+            <DialogContent sx={{ pt: 3 }}>
+              <Typography variant="h5" fontWeight={900} color="white" mb={1}>{calendarSessionObj.title}</Typography>
+              <Chip label={calendarSessionObj.subject} size="small" sx={{ bgcolor: 'rgba(99, 102, 241, 0.1)', color: '#818cf8', fontWeight: 800, mb: 3 }} />
+              
+              <Box display="flex" flexDirection="column" gap={2} mb={3}>
+                <Box display="flex" alignItems="center" gap={1.5}>
+                  <Box sx={{ width: 36, height: 36, borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Clock size={16} color="#94a3b8" /></Box>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" fontWeight={600}>Time & Duration</Typography>
+                    <Typography variant="body1" color="white" fontWeight={700}>{format(parseISO(calendarSessionObj.scheduledAt), 'MMM d, yyyy - h:mm a')}</Typography>
+                    <Typography variant="caption" color="#818cf8" fontWeight={700}>{calendarSessionObj.duration} Minutes</Typography>
+                  </Box>
+                </Box>
+                <Box display="flex" alignItems="center" gap={1.5}>
+                  <Box sx={{ width: 36, height: 36, borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {calendarSessionObj.isOnline ? <Video size={16} color="#94a3b8" /> : <MapPin size={16} color="#94a3b8" />}
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" fontWeight={600}>Location</Typography>
+                    <Typography variant="body1" color="white" fontWeight={700} sx={{ wordBreak: 'break-all' }}>
+                      {calendarSessionObj.isOnline ? (calendarSessionObj.meetingLink ? <a href={calendarSessionObj.meetingLink} target="_blank" rel="noreferrer" style={{ color: '#818cf8' }}>{calendarSessionObj.meetingLink}</a> : 'Online Link Pending') : calendarSessionObj.location}
+                    </Typography>
+                  </Box>
+                </Box>
+                <Box display="flex" alignItems="center" gap={1.5}>
+                  <Box sx={{ width: 36, height: 36, borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={16} color="#94a3b8" /></Box>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" fontWeight={600}>Participants</Typography>
+                    <Typography variant="body1" color="white" fontWeight={700}>{calendarSessionObj.participants?.length || 0} / {calendarSessionObj.maxParticipants} Joined</Typography>
+                  </Box>
+                </Box>
+              </Box>
+
+              {calendarSessionObj.description && (
+                <Box sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.02)', borderRadius: 2, mb: 2 }}>
+                  <Typography variant="body2" color="rgba(255,255,255,0.7)">{calendarSessionObj.description}</Typography>
+                </Box>
+              )}
+            </DialogContent>
+            <DialogActions sx={{ p: 3, pt: 0 }}>
+              {calendarSessionObj.participants?.some(p => p._id === user?._id || p === user?._id) ? (
+                <Button fullWidth variant="outlined" color="error" onClick={() => { handleLeave(calendarSessionObj._id); setCalendarSessionObj(null); }} sx={{ borderRadius: 2, fontWeight: 800 }}>Leave Session</Button>
+              ) : calendarSessionObj.host?._id === user?._id ? (
+                <Button fullWidth variant="outlined" color="error" onClick={() => { handleDelete(calendarSessionObj._id); setCalendarSessionObj(null); }} sx={{ borderRadius: 2, fontWeight: 800 }}>Cancel Session</Button>
+              ) : (
+                <Button fullWidth variant="contained" onClick={() => { handleJoin(calendarSessionObj._id); setCalendarSessionObj(null); }} sx={{ bgcolor: '#6366f1', color: 'white', borderRadius: 2, fontWeight: 800, '&:hover': { bgcolor: '#4f46e5' } }}>Join Session</Button>
+              )}
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
+
+      {displaySessions.length === 0 && viewMode === 'list' ? (
         <Box sx={{ textAlign: 'center', py: 10, color: 'text.secondary' }}>
-          <Calendar size={64} style={{ margin: '0 auto 16px', opacity: 0.2 }} />
+          <CalendarIcon size={64} style={{ margin: '0 auto 16px', opacity: 0.2 }} />
           <Typography variant="h6" fontWeight={700} color="text.primary">
             No sessions found
           </Typography>
@@ -222,7 +312,7 @@ export default function Sessions() {
             Create a session to get started
           </Typography>
         </Box>
-      ) : (
+      ) : viewMode === 'list' ? (
         <Grid container spacing={3}>
           {displaySessions.map(s => (
             <Grid item xs={12} md={6} lg={4} key={s._id}>
@@ -230,6 +320,73 @@ export default function Sessions() {
             </Grid>
           ))}
         </Grid>
+      ) : (
+        <Box sx={{ bgcolor: 'background.paper', borderRadius: 4, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
+          {/* Calendar Header */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 3, borderBottom: '1px solid', borderColor: 'divider' }}>
+            <Typography variant="h5" fontWeight={900} color="text.primary">
+              {format(currentMonth, 'MMMM yyyy')}
+            </Typography>
+            <Box display="flex" gap={1}>
+              <IconButton onClick={prevMonth} sx={{ border: '1px solid', borderColor: 'divider' }}><ChevronLeft size={20} /></IconButton>
+              <IconButton onClick={nextMonth} sx={{ border: '1px solid', borderColor: 'divider' }}><ChevronRight size={20} /></IconButton>
+            </Box>
+          </Box>
+          
+          {/* Calendar Grid Header */}
+          <Grid container sx={{ bgcolor: 'rgba(255,255,255,0.02)', borderBottom: '1px solid', borderColor: 'divider' }}>
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+              <Grid item xs={12/7} key={day} sx={{ p: 2, textAlign: 'center' }}>
+                <Typography variant="subtitle2" fontWeight={700} color="text.secondary" textTransform="uppercase" letterSpacing={1}>{day}</Typography>
+              </Grid>
+            ))}
+          </Grid>
+
+          {/* Calendar Grid Body */}
+          <Grid container sx={{ '& .MuiGrid-item': { borderRight: '1px solid', borderBottom: '1px solid', borderColor: 'divider' } }}>
+            {calendarDays.map((day, idx) => {
+              const dateEvents = displaySessions.filter(s => isSameDay(parseISO(s.scheduledAt), day));
+              const isToday = isSameDay(day, new Date());
+              const isCurrentMonth = isSameMonth(day, currentMonth);
+              
+              return (
+                <Grid item xs={12/7} key={day.toString()} sx={{ minHeight: 140, p: 1, bgcolor: isCurrentMonth ? 'transparent' : 'rgba(255,255,255,0.01)', opacity: isCurrentMonth ? 1 : 0.4, transition: 'all 0.2s', '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' } }}>
+                  <Box display="flex" justifyContent="flex-end" mb={1}>
+                    <Box sx={{ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: isToday ? 'primary.main' : 'transparent', color: isToday ? 'white' : 'text.primary', fontWeight: isToday ? 800 : 600 }}>
+                      {format(day, 'd')}
+                    </Box>
+                  </Box>
+                  <Box display="flex" flexDirection="column" gap={0.5}>
+                    {dateEvents.slice(0, 3).map(event => (
+                      <Box 
+                        key={event._id} 
+                        onClick={() => setCalendarSessionObj(event)}
+                        sx={{ 
+                          p: 0.75, borderRadius: 1.5, cursor: 'pointer',
+                          bgcolor: event.isOnline ? 'rgba(99, 102, 241, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                          borderLeft: '3px solid', borderColor: event.isOnline ? '#6366f1' : '#10b981',
+                          '&:hover': { bgcolor: event.isOnline ? 'rgba(99, 102, 241, 0.25)' : 'rgba(16, 185, 129, 0.25)' }
+                        }}
+                      >
+                        <Typography variant="caption" sx={{ display: 'block', fontWeight: 800, color: 'text.primary', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>
+                          {format(parseISO(event.scheduledAt), 'h:mm a')}
+                        </Typography>
+                        <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>
+                          {event.title}
+                        </Typography>
+                      </Box>
+                    ))}
+                    {dateEvents.length > 3 && (
+                      <Typography variant="caption" color="text.secondary" fontWeight={700} textAlign="center" mt={0.5}>
+                        +{dateEvents.length - 3} more
+                      </Typography>
+                    )}
+                  </Box>
+                </Grid>
+              );
+            })}
+          </Grid>
+        </Box>
       )}
     </Container>
   );
