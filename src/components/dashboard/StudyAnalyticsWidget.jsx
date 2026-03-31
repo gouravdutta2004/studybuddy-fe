@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, useTheme } from '@mui/material';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Activity } from 'lucide-react';
 
@@ -13,23 +13,23 @@ const focusData = [
   { day: 'Sun', hours: 6.5 },
 ];
 
-const CustomTooltip = ({ active, payload, label }) => {
+const CustomTooltip = ({ active, payload, label, isDark }) => {
   if (active && payload && payload.length) {
     return (
       <Box sx={{
-        bgcolor: 'rgba(15, 23, 42, 0.9)',
-        color: 'white',
+        bgcolor: isDark ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+        color: isDark ? 'white' : '#0F172A',
         p: 2,
         borderRadius: '16px',
         border: '1px solid rgba(99,102,241,0.3)',
         backdropFilter: 'blur(12px)',
-        boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+        boxShadow: isDark ? '0 10px 30px rgba(0,0,0,0.5)' : '0 10px 30px rgba(15,23,42,0.1)'
       }}>
-        <Typography variant="caption" fontWeight={800} sx={{ display: 'block', mb: 0.5, color: 'rgba(255,255,255,0.6)' }}>
+        <Typography variant="caption" fontWeight={800} sx={{ display: 'block', mb: 0.5, color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(15,23,42,0.6)' }}>
           {label} Snapshot
         </Typography>
         <Typography variant="h6" fontWeight={900} color="#22D3EE">
-          {payload[0].value} <span style={{ fontSize: '0.6em', opacity: 0.7, color: 'white' }}>hrs</span>
+          {payload[0].value} <span style={{ fontSize: '0.6em', opacity: 0.7, color: isDark ? 'white' : '#0F172A' }}>hrs</span>
         </Typography>
       </Box>
     );
@@ -38,10 +38,13 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 const StudyAnalyticsWidget = () => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-        <Typography variant="h6" fontWeight={900} color="white" display="flex" alignItems="center" gap={1.5}>
+        <Typography variant="h6" fontWeight={900} color={isDark ? "white" : "#0F172A"} display="flex" alignItems="center" gap={1.5}>
           <Activity size={20} color="#6366F1" /> Study Velocity
         </Typography>
         <Box sx={{ bgcolor: 'rgba(34, 211, 238, 0.1)', color: '#22D3EE', px: 2, py: 0.5, borderRadius: '100px', border: '1px solid rgba(34,211,238,0.2)' }}>
@@ -49,7 +52,7 @@ const StudyAnalyticsWidget = () => {
         </Box>
       </Box>
 
-      <Typography variant="caption" color="rgba(255,255,255,0.5)" fontWeight={600} mb={4}>
+      <Typography variant="caption" color={isDark ? "rgba(255,255,255,0.5)" : "rgba(15,23,42,0.5)"} fontWeight={600} mb={4}>
         Real-time deep-work velocity tracking across all matrices.
       </Typography>
 
@@ -66,15 +69,15 @@ const StudyAnalyticsWidget = () => {
               dataKey="day" 
               axisLine={false} 
               tickLine={false} 
-              tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: 700 }} 
+              tick={{ fill: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(15,23,42,0.6)', fontSize: 13, fontWeight: 700 }} 
               dy={15}
             />
             <YAxis 
               axisLine={false} 
               tickLine={false} 
-              tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: 700 }} 
+              tick={{ fill: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(15,23,42,0.6)', fontSize: 13, fontWeight: 700 }} 
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(34, 211, 238, 0.4)', strokeWidth: 1, strokeDasharray: '4 4' }} />
+            <Tooltip content={<CustomTooltip isDark={isDark} />} cursor={{ stroke: 'rgba(34, 211, 238, 0.4)', strokeWidth: 1, strokeDasharray: '4 4' }} />
             <Area 
               type="monotone" 
               dataKey="hours" 

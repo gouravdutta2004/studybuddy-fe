@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Container, Typography, Grid, Button, Chip, Divider,
-  CircularProgress, Table, TableBody, TableCell, TableHead, TableRow, Paper
+  CircularProgress, Table, TableBody, TableCell, TableHead, TableRow, Paper, useTheme
 } from '@mui/material';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { Check, CreditCard, Sparkles, ShieldCheck, AlertCircle, Clock, RefreshCw } from 'lucide-react';
@@ -61,6 +61,8 @@ const PLANS = [
 ];
 
 export default function Billing() {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const { user, updateUser } = useAuth();
   const [status, setStatus] = useState(null);
   const [history, setHistory] = useState([]);
@@ -191,17 +193,17 @@ export default function Billing() {
   const fmt = (d) => d ? new Date(d).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }) : '—';
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#020617', py: { xs: 6, md: 10 } }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: isDark ? '#020617' : '#F8FAFC', py: { xs: 6, md: 10 } }}>
       <Container maxWidth="lg">
         <motion.div initial="hidden" animate="visible" variants={stagger}>
 
           {/* ── Header ── */}
           <Box textAlign="center" mb={8} component={motion.div} variants={fade}>
-            <Typography variant="h3" fontWeight={900} color="white" mb={1.5}
+            <Typography variant="h3" fontWeight={900} color={isDark ? "white" : "#0F172A"} mb={1.5}
               display="flex" alignItems="center" justifyContent="center" gap={2}>
               <CreditCard color="#6366f1" size={40} /> Subscription &amp; Billing
             </Typography>
-            <Typography variant="h6" color="rgba(255,255,255,0.5)">
+            <Typography variant="h6" color={isDark ? "rgba(255,255,255,0.5)" : "rgba(15,23,42,0.6)"}>
               Manage your plan and unlock premium StudyFriend tools.
             </Typography>
 
@@ -225,17 +227,17 @@ export default function Billing() {
           {/* ── Active Plan Banner ── */}
           {!statusLoading && currentPlan !== 'basic' && (
             <Box component={motion.div} variants={fade}
-              sx={{ mb: 6, p: 3, borderRadius: '20px', bgcolor: 'rgba(99,102,241,0.08)',
+              sx={{ mb: 6, p: 3, borderRadius: '20px', bgcolor: isDark ? 'rgba(99,102,241,0.08)' : 'rgba(99,102,241,0.05)',
                     border: '1px solid rgba(99,102,241,0.2)', display: 'flex',
                     alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <ShieldCheck color="#6366f1" size={32} />
                 <Box>
-                  <Typography color="white" fontWeight={800} fontSize={18}>
+                  <Typography color={isDark ? "white" : "#0F172A"} fontWeight={800} fontSize={18}>
                     Active: {currentPlan.toUpperCase()} Plan
                   </Typography>
                   {activeUntil && (
-                    <Typography color="rgba(255,255,255,0.5)" variant="body2" display="flex" alignItems="center" gap={0.5}>
+                    <Typography color={isDark ? "rgba(255,255,255,0.5)" : "rgba(15,23,42,0.6)"} variant="body2" display="flex" alignItems="center" gap={0.5}>
                       <Clock size={13} /> Renews {fmt(activeUntil)}
                     </Typography>
                   )}
@@ -260,8 +262,8 @@ export default function Billing() {
                 <Grid item xs={12} md={4} key={plan.key}>
                   <motion.div variants={fade} style={{ height: '100%' }}>
                     <TiltCard sx={{
-                      background: isActive ? plan.gradient : 'rgba(255,255,255,0.02)',
-                      border: `1px solid ${isActive ? plan.color : 'rgba(255,255,255,0.06)'}`,
+                      background: isActive ? plan.gradient : (isDark ? 'rgba(255,255,255,0.02)' : 'white'),
+                      border: `1px solid ${isActive ? plan.color : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)')}`,
                       p: 4, pt: 5, display: 'flex', flexDirection: 'column',
                       position: 'relative'
                     }}>
@@ -278,24 +280,24 @@ export default function Billing() {
                         }} />
                       )}
 
-                      <Typography variant="h5" fontWeight={900} color="white">{plan.name}</Typography>
-                      <Typography variant="body2" color="rgba(255,255,255,0.5)" mt={0.5} mb={3} sx={{ minHeight: 36 }}>
+                      <Typography variant="h5" fontWeight={900} color={isActive || isDark ? "white" : "#0F172A"}>{plan.name}</Typography>
+                      <Typography variant="body2" color={isActive || isDark ? "rgba(255,255,255,0.5)" : "rgba(15,23,42,0.6)"} mt={0.5} mb={3} sx={{ minHeight: 36 }}>
                         {plan.desc}
                       </Typography>
 
                       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, mb: 1 }}>
                         {plan.price === 0 ? (
-                          <Typography variant="h3" fontWeight={900} color="white">Free</Typography>
+                          <Typography variant="h3" fontWeight={900} color={isActive || isDark ? "white" : "#0F172A"}>Free</Typography>
                         ) : (
                           <>
-                            <Typography variant="caption" color="rgba(255,255,255,0.5)" fontWeight={700} fontSize={18} mt={1}>₹</Typography>
-                            <Typography variant="h3" fontWeight={900} color="white" sx={{ letterSpacing: '-2px' }}>
+                            <Typography variant="caption" color={isActive || isDark ? "rgba(255,255,255,0.5)" : "rgba(15,23,42,0.6)"} fontWeight={700} fontSize={18} mt={1}>₹</Typography>
+                            <Typography variant="h3" fontWeight={900} color={isActive || isDark ? "white" : "#0F172A"} sx={{ letterSpacing: '-2px' }}>
                               {plan.price.toLocaleString('en-IN')}
                             </Typography>
                           </>
                         )}
                       </Box>
-                      <Typography variant="caption" color="rgba(255,255,255,0.4)" fontWeight={600} mb={3} display="block">
+                      <Typography variant="caption" color={isActive || isDark ? "rgba(255,255,255,0.4)" : "rgba(15,23,42,0.5)"} fontWeight={600} mb={3} display="block">
                         {plan.period}
                       </Typography>
 
@@ -306,10 +308,10 @@ export default function Billing() {
                         startIcon={plan.key !== 'basic' && !isActive ? <Sparkles size={16} /> : null}
                         sx={{
                           borderRadius: '100px', py: 2, fontWeight: 900, fontSize: '0.95rem', mb: 4,
-                          bgcolor: isActive ? 'rgba(255,255,255,0.1)' : plan.color,
-                          color: isActive ? 'rgba(255,255,255,0.5)' : 'white',
+                          bgcolor: isActive ? 'rgba(255,255,255,0.2)' : plan.color,
+                          color: isActive ? 'white' : 'white',
                           boxShadow: isActive ? 'none' : `0 4px 20px ${plan.color}60`,
-                          '&.Mui-disabled': { bgcolor: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.3)' },
+                          '&.Mui-disabled': { bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.05)', color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(15,23,42,0.4)' },
                           '&:hover': { bgcolor: plan.color, opacity: 0.85 },
                         }}
                       >
@@ -319,7 +321,7 @@ export default function Billing() {
                          `Upgrade to ${plan.name}`}
                       </Button>
 
-                      <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)', mb: 3 }} />
+                      <Divider sx={{ borderColor: isActive || isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)', mb: 3 }} />
 
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 'auto' }}>
                         {plan.features.map((f) => (
@@ -328,7 +330,7 @@ export default function Billing() {
                               bgcolor: `${plan.color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               <Check size={13} color={plan.color} strokeWidth={3} />
                             </Box>
-                            <Typography variant="body2" color="rgba(255,255,255,0.75)" fontWeight={600}>{f}</Typography>
+                            <Typography variant="body2" color={isActive || isDark ? "rgba(255,255,255,0.75)" : "rgba(15,23,42,0.75)"} fontWeight={600}>{f}</Typography>
                           </Box>
                         ))}
                       </Box>
@@ -341,24 +343,24 @@ export default function Billing() {
 
           {/* ── Payment History ── */}
           <Box component={motion.div} variants={fade} mt={8}>
-            <Typography variant="h5" fontWeight={800} color="white" mb={3}
+            <Typography variant="h5" fontWeight={800} color={isDark ? "white" : "#0F172A"} mb={3}
               display="flex" alignItems="center" gap={1.5}>
               <RefreshCw size={22} color="#6366f1" /> Payment History
             </Typography>
 
             {history.length === 0 ? (
               <Box sx={{ p: 4, textAlign: 'center', borderRadius: '16px',
-                bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <Typography color="rgba(255,255,255,0.4)" fontWeight={600}>
+                bgcolor: isDark ? 'rgba(255,255,255,0.02)' : 'white', border: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)' }}>
+                <Typography color={isDark ? "rgba(255,255,255,0.4)" : "rgba(15,23,42,0.5)"} fontWeight={600}>
                   No transactions yet. Upgrade to see your history.
                 </Typography>
               </Box>
             ) : (
-              <Paper sx={{ borderRadius: '16px', overflow: 'hidden', bgcolor: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.05)' }}>
+              <Paper sx={{ borderRadius: '16px', overflow: 'hidden', bgcolor: isDark ? 'rgba(255,255,255,0.02)' : 'white',
+                border: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)', boxShadow: isDark ? 'none' : '0 10px 40px rgba(0,0,0,0.05)' }}>
                 <Table>
                   <TableHead>
-                    <TableRow sx={{ '& th': { color: 'rgba(255,255,255,0.5)', fontWeight: 700, borderColor: 'rgba(255,255,255,0.06)', bgcolor: 'rgba(255,255,255,0.02)' } }}>
+                    <TableRow sx={{ '& th': { color: isDark ? 'rgba(255,255,255,0.5)' : '#64748B', fontWeight: 700, borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', bgcolor: isDark ? 'rgba(255,255,255,0.02)' : '#F8FAFC' } }}>
                       <TableCell>Date</TableCell>
                       <TableCell>Plan</TableCell>
                       <TableCell>Amount</TableCell>
@@ -367,7 +369,7 @@ export default function Billing() {
                   </TableHead>
                   <TableBody>
                     {history.map((item) => (
-                      <TableRow key={item.id} sx={{ '& td': { color: 'white', borderColor: 'rgba(255,255,255,0.04)' } }}>
+                      <TableRow key={item.id} sx={{ '& td': { color: isDark ? 'white' : '#0F172A', borderColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)' } }}>
                         <TableCell>{fmt(item.date)}</TableCell>
                         <TableCell>
                           <Chip label={item.plan?.toUpperCase()} size="small"
@@ -388,7 +390,7 @@ export default function Billing() {
 
           {/* Footer note */}
           <Box mt={6} textAlign="center" component={motion.div} variants={fade}>
-            <Typography variant="caption" color="rgba(255,255,255,0.25)">
+            <Typography variant="caption" color={isDark ? "rgba(255,255,255,0.25)" : "rgba(15,23,42,0.4)"}>
               {isRealGateway
                 ? 'All payments are securely processed by Razorpay. We do not store your card details.'
                 : 'Running in demo mode. Add your Razorpay test keys to enable real payments.'}
