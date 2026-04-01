@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Box, Typography, Button, IconButton, useTheme, Avatar, LinearProgress, Grid, Tooltip, Chip } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { Users, Calendar, Award, CheckCircle, RefreshCw, Lock, Zap, BookOpen, Clock, Activity, MessageCircle, LockKeyhole, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -24,6 +24,7 @@ const staggerContainer = { hidden: { opacity: 0 }, visible: { opacity: 1, transi
 export default function Dashboard() {
   const { user } = useAuth();
   const theme = useTheme();
+  const navigate = useNavigate();
   
   const [stats, setStats] = useState({ connections: 0, sessions: 0, pending: 0 });
   const [refreshKey, setRefreshKey] = useState(0);
@@ -162,7 +163,7 @@ export default function Dashboard() {
           {/* Stats Cards Row */}
           <Box sx={{ gridColumn: { xs: 'span 1', lg: 'span 4' } }}>
             <motion.div variants={fadeUpSpring} style={{ height: '100%' }}>
-            <Box className="glass-card glow-primary" sx={{ p: 4, display: 'flex', alignItems: 'center', gap: 2.5 }}>
+            <Box onClick={(e) => { if(e.target.closest('button') || e.target.closest('a')) return; navigate('/connections'); }} className="glass-card glow-primary" sx={{ p: 4, display: 'flex', alignItems: 'center', gap: 2.5, cursor: 'pointer' }}>
               <Box sx={{ bgcolor: 'rgba(99,102,241,0.15)', p: 2, borderRadius: '20px', color: '#6366F1' }}>
                 <Users size={32} />
               </Box>
@@ -176,7 +177,7 @@ export default function Dashboard() {
 
           <Box sx={{ gridColumn: { xs: 'span 1', lg: 'span 4' } }}>
             <motion.div variants={fadeUpSpring} style={{ height: '100%' }}>
-            <Box className="glass-card glow-purple" sx={{ p: 4, display: 'flex', alignItems: 'center', gap: 2.5 }}>
+            <Box onClick={(e) => { if(e.target.closest('button') || e.target.closest('a')) return; navigate('/sessions'); }} className="glass-card glow-purple" sx={{ p: 4, display: 'flex', alignItems: 'center', gap: 2.5, cursor: 'pointer' }}>
               <Box sx={{ bgcolor: 'rgba(139,92,246,0.15)', p: 2, borderRadius: '20px', color: '#8B5CF6' }}>
                 <Calendar size={32} />
               </Box>
@@ -190,7 +191,7 @@ export default function Dashboard() {
 
           <Box sx={{ gridColumn: { xs: 'span 1', lg: 'span 4' } }}>
             <motion.div variants={fadeUpSpring} style={{ height: '100%' }}>
-            <Box className="glass-card glow-accent" sx={{ p: 4, display: 'flex', alignItems: 'center', gap: 2.5 }}>
+            <Box onClick={(e) => { if(e.target.closest('button') || e.target.closest('a')) return; navigate('/connections'); }} className="glass-card glow-accent" sx={{ p: 4, display: 'flex', alignItems: 'center', gap: 2.5, cursor: 'pointer' }}>
               <Box sx={{ bgcolor: 'rgba(34,211,238,0.15)', p: 2, borderRadius: '20px', color: '#22D3EE' }}>
                 <Activity size={32} />
               </Box>
@@ -205,7 +206,7 @@ export default function Dashboard() {
           {/* Gamification Strip */}
           <Box sx={{ gridColumn: { xs: 'span 1', lg: 'span 12' } }}>
             <motion.div variants={fadeUpSpring}>
-            <Box className="glass-card gradient-border-shimmer" sx={{ p: { xs: 3, md: 4 }, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, flexWrap: 'wrap' }}>
+            <Box onClick={(e) => { if(e.target.closest('button') || e.target.closest('a')) return; navigate('/gamification'); }} className="glass-card gradient-border-shimmer" sx={{ p: { xs: 3, md: 4 }, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, flexWrap: 'wrap', cursor: 'pointer' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flex: 1, minWidth: '300px' }}>
                 <Box sx={{ position: 'relative' }}>
                   <Box sx={{ 
@@ -240,14 +241,14 @@ export default function Dashboard() {
 
           {/* ROW 1: Analytics & Quests */}
           <Box sx={{ gridColumn: { xs: 'span 1', lg: 'span 8' } }}>
-            <motion.div variants={fadeUpSpring} className="glass-card glow-primary" style={{ height: '100%', minHeight: '380px' }}>
+            <motion.div variants={fadeUpSpring} className="glass-card glow-primary" style={{ height: '100%', minHeight: '380px', cursor: 'pointer' }} onClick={(e) => { if(e.target.closest('button') || e.target.closest('a')) return; navigate('/profile'); }}>
               <Box sx={{ p: 4, height: '100%' }}>
                 <StudyAnalyticsWidget />
               </Box>
             </motion.div>
           </Box>
           <Box sx={{ gridColumn: { xs: 'span 1', lg: 'span 4' } }}>
-            <motion.div variants={fadeUpSpring} className="glass-card glow-accent" style={{ height: '100%', minHeight: '380px' }}>
+            <motion.div variants={fadeUpSpring} className="glass-card glow-accent" style={{ height: '100%', minHeight: '380px', cursor: 'pointer' }} onClick={(e) => { if(e.target.closest('button') || e.target.closest('a')) return; navigate('/gamification'); }}>
                <Box sx={{ p: 4, height: '100%' }}>
                  <BountiesWidget />
                </Box>
@@ -256,7 +257,7 @@ export default function Dashboard() {
 
           {/* ROW 2: Heatmap & Calendar */}
           <Box sx={{ gridColumn: { xs: 'span 1', lg: 'span 8' } }}>
-            <motion.div variants={fadeUpSpring} className="glass-card" style={{ height: '100%' }}>
+            <motion.div variants={fadeUpSpring} className="glass-card" style={{ height: '100%', cursor: 'pointer' }} onClick={(e) => { if(e.target.closest('button') || e.target.closest('a')) return; navigate('/billing'); }}>
               <Box sx={{ p: 5, textAlign: 'center', position: 'relative', height: '100%', minHeight: '300px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                  <Typography variant="h6" fontWeight={900} display="flex" alignItems="center" gap={1.5} color={isDark ? "white" : "#0F172A"} mb={3} zIndex={2}>
                     <BookOpen size={20} color="#22D3EE" /> Global Study Heatmap
@@ -276,7 +277,7 @@ export default function Dashboard() {
             </motion.div>
           </Box>
           <Box sx={{ gridColumn: { xs: 'span 1', lg: 'span 4' } }}>
-            <motion.div variants={fadeUpSpring} className="glass-card glow-primary" style={{ height: '100%', minHeight: '380px' }}>
+            <motion.div variants={fadeUpSpring} className="glass-card glow-primary" style={{ height: '100%', minHeight: '380px', cursor: 'pointer' }} onClick={(e) => { if(e.target.closest('button') || e.target.closest('a')) return; navigate('/sessions'); }}>
                <Box sx={{ p: 4, height: '100%' }}>
                  <MiniCalendarWidget />
                </Box>
@@ -292,7 +293,7 @@ export default function Dashboard() {
               </motion.div>
               
               <motion.div variants={fadeUpSpring} style={{ height: '100%' }}>
-                  <Box className="glass-card glow-accent" sx={{ p: 4, height: '100%', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <Box className="glass-card glow-accent" sx={{ p: 4, height: '100%', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={(e) => { if(e.target.closest('button') || e.target.closest('a')) return; navigate('/browse'); }}>
                     <Typography variant="h6" fontWeight={900} display="flex" alignItems="center" gap={1.5} color={isDark ? "white" : "#0F172A"} mb={4} width="100%">
                        <MessageCircle size={20} color="#22D3EE" /> Community Sync
                     </Typography>
@@ -308,7 +309,7 @@ export default function Dashboard() {
               </motion.div>
           </Box>
           <Box sx={{ gridColumn: { xs: 'span 1', lg: 'span 4' } }}>
-            <motion.div variants={fadeUpSpring} className="glass-card glow-purple" style={{ height: '100%', minHeight: '420px' }}>
+            <motion.div variants={fadeUpSpring} className="glass-card glow-purple" style={{ height: '100%', minHeight: '420px', cursor: 'pointer' }} onClick={(e) => { if(e.target.closest('button') || e.target.closest('a') || e.target.closest('input')) return; navigate('/focus'); }}>
                <Box sx={{ p: 4, height: '100%' }}>
                  <FocusTimerWidget />
                </Box>
