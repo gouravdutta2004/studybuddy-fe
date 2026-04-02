@@ -34,7 +34,7 @@ const NAV = [
 const SECTION_BREAKS = [3, 6, 11];
 
 /* ─── Rail item ─── */
-function RailItem({ to, icon: Icon, label, color, isActive, expanded, unread, onClick }) {
+function RailItem({ to, icon: Icon, label, color, isActive, expanded, unread, onClick, isDark }) {
   return (
     <Tooltip title={!expanded ? label : ''} placement="right" arrow>
       <Box
@@ -52,7 +52,7 @@ function RailItem({ to, icon: Icon, label, color, isActive, expanded, unread, on
           bgcolor: isActive ? `${color}18` : 'transparent',
           transition: 'all 0.2s cubic-bezier(.4,0,.2,1)',
           '&:hover': {
-            bgcolor: isActive ? `${color}22` : 'rgba(255,255,255,0.05)',
+            bgcolor: isActive ? `${color}22` : (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'),
           },
         }}
       >
@@ -79,7 +79,7 @@ function RailItem({ to, icon: Icon, label, color, isActive, expanded, unread, on
           <Icon
             size={19}
             strokeWidth={isActive ? 2.5 : 1.8}
-            color={isActive ? color : 'rgba(255,255,255,0.45)'}
+            color={isActive ? color : (isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)')}
             style={{ transition: 'all 0.2s' }}
           />
           {/* Badge */}
@@ -87,7 +87,8 @@ function RailItem({ to, icon: Icon, label, color, isActive, expanded, unread, on
             <Box sx={{
               position: 'absolute', top: -4, right: -4,
               width: 15, height: 15, borderRadius: '50%',
-              bgcolor: '#ef4444', border: '2px solid #06090f',
+              bgcolor: '#ef4444',
+              border: `2px solid ${isDark ? '#06090f' : '#f0f2f8'}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '0.5rem', fontWeight: 900, color: 'white',
             }}>
@@ -107,7 +108,7 @@ function RailItem({ to, icon: Icon, label, color, isActive, expanded, unread, on
               style={{
                 fontSize: '0.82rem',
                 fontWeight: isActive ? 700 : 500,
-                color: isActive ? color : 'rgba(255,255,255,0.6)',
+                color: isActive ? color : (isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)'),
                 whiteSpace: 'nowrap',
                 letterSpacing: 0.2,
               }}
@@ -156,15 +157,16 @@ export default function Sidebar({ mobileOpen = false, setMobileOpen = () => {} }
         height: '100%', display: 'flex', flexDirection: 'column',
         width: railWidth, transition: 'width 0.25s cubic-bezier(.4,0,.2,1)',
         overflow: 'hidden',
-        bgcolor: isDark ? 'rgba(4,6,18,0.92)' : 'rgba(255,255,255,0.92)',
+        bgcolor: isDark ? 'rgba(4,6,18,0.96)' : 'rgba(255,255,255,0.96)',
         backdropFilter: 'blur(24px)',
         borderRight: '1px solid',
-        borderColor: isDark ? 'rgba(99,102,241,0.1)' : 'rgba(0,0,0,0.06)',
+        borderColor: isDark ? 'rgba(99,102,241,0.1)' : 'rgba(0,0,0,0.07)',
         boxShadow: isDark ? '4px 0 32px rgba(0,0,0,0.5)' : '4px 0 20px rgba(0,0,0,0.06)',
+        transition: 'background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease',
       }}
     >
       {/* ── Logo / Brand ── */}
-      <Box sx={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: expanded ? 'flex-start' : 'center', px: expanded ? 2 : 0, flexShrink: 0, borderBottom: '1px solid', borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
+      <Box sx={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: expanded ? 'flex-start' : 'center', px: expanded ? 2 : 0, flexShrink: 0, borderBottom: '1px solid', borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)' }}>
         <Box sx={{ width: 36, height: 36, borderRadius: '10px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 0 16px rgba(99,102,241,0.4)', bgcolor: 'white' }}>
           <img src="/logo.png" alt="StudyFriend" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </Box>
@@ -172,7 +174,7 @@ export default function Sidebar({ mobileOpen = false, setMobileOpen = () => {} }
           {expanded && (
             <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.18 }}>
               <Box sx={{ ml: 1.5 }}>
-                <Box sx={{ fontWeight: 900, fontSize: '1rem', color: isDark ? 'white' : '#0f172a', lineHeight: 1, letterSpacing: -0.5, fontFamily: "'Inter',sans-serif" }}>StudyFriend</Box>
+                <Box sx={{ fontWeight: 900, fontSize: '1rem', color: isDark ? '#ffffff' : '#0f172a', lineHeight: 1, letterSpacing: -0.5, fontFamily: "'Inter',sans-serif" }}>StudyFriend</Box>
               </Box>
             </motion.div>
           )}
@@ -210,7 +212,7 @@ export default function Sidebar({ mobileOpen = false, setMobileOpen = () => {} }
               )}
               <RailItem
                 to={to} icon={icon} label={label} color={color}
-                isActive={isActive} expanded={expanded}
+                isActive={isActive} expanded={expanded} isDark={isDark}
                 unread={to === '/messages' ? unreadCount : 0}
                 onClick={() => setMobileOpen(false)}
               />
@@ -222,17 +224,17 @@ export default function Sidebar({ mobileOpen = false, setMobileOpen = () => {} }
         {(user?.role === 'ORG_ADMIN' || user?.isAdmin) && (
           <>
             <Box sx={{ my: 1, mx: expanded ? 1 : 'auto', height: '1px', bgcolor: 'rgba(99,102,241,0.15)', transition: 'all 0.25s' }} />
-            <RailItem to="/org-admin" icon={Shield} label="Org Admin" color="#ec4899" isActive={location.pathname.startsWith('/org-admin')} expanded={expanded} onClick={() => setMobileOpen(false)} />
+            <RailItem to="/org-admin" icon={Shield} label="Org Admin" color="#ec4899" isActive={location.pathname.startsWith('/org-admin')} expanded={expanded} isDark={isDark} onClick={() => setMobileOpen(false)} />
           </>
         )}
         {user?.isAdmin && (
-          <RailItem to="/admin" icon={Shield} label="Super Admin" color="#f43f5e" isActive={location.pathname.startsWith('/admin')} expanded={expanded} onClick={() => setMobileOpen(false)} />
+          <RailItem to="/admin" icon={Shield} label="Super Admin" color="#f43f5e" isActive={location.pathname.startsWith('/admin')} expanded={expanded} isDark={isDark} onClick={() => setMobileOpen(false)} />
         )}
       </Box>
 
       {/* ── PRO upgrade ── */}
       {!user?.isAdmin && user?.role !== 'ORG_ADMIN' && (
-        <Box sx={{ p: 1, flexShrink: 0, borderTop: '1px solid', borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
+        <Box sx={{ p: 1, flexShrink: 0, borderTop: '1px solid', borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)' }}>
           <Tooltip title={!expanded ? 'Upgrade to Pro' : ''} placement="right" arrow>
             <Box
               component={RouterLink} to="/billing"

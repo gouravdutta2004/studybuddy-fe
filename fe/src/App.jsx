@@ -8,7 +8,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
-import { Box, Drawer } from '@mui/material';
+import { Box, Drawer, useTheme } from '@mui/material';
 import { useState } from 'react';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
@@ -72,13 +72,23 @@ class GlobalErrorBoundary extends React.Component {
 const Layout = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const muiTheme = useTheme();
   
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', p: { xs: 0, md: 2 }, gap: { xs: 0, md: 2 } }}>
+    <Box sx={
+      {
+        display: 'flex',
+        minHeight: '100vh',
+        p: { xs: 0, md: 2 },
+        gap: { xs: 0, md: 2 },
+        bgcolor: 'background.default',
+        transition: 'background-color 0.3s ease',
+      }
+    }>
       <CommandPalette />
 
       {/* Mobile Drawer */}
-      <Drawer anchor="left" open={mobileOpen} onClose={() => setMobileOpen(false)} PaperProps={{ sx: { width: 280, border: 'none' } }}>
+      <Drawer anchor="left" open={mobileOpen} onClose={() => setMobileOpen(false)} PaperProps={{ sx: { width: 280, border: 'none', bgcolor: muiTheme.palette.mode === 'dark' ? 'rgba(4,6,18,0.98)' : 'rgba(255,255,255,0.98)' } }}>
         <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       </Drawer>
       
@@ -86,7 +96,7 @@ const Layout = ({ children }) => {
       <Sidebar mobileOpen={false} setMobileOpen={() => {}} />
 
       {/* Main Content Area */}
-      <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflowX: 'hidden' }}>
+      <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflowX: 'hidden', bgcolor: 'background.default', transition: 'background-color 0.3s ease' }}>
         <GlobalAnnouncementBanner />
         <Navbar onMenuClick={() => setMobileOpen(true)} />
         <Box component="main" sx={{ flexGrow: 1, p: 0, overflowX: 'hidden' }}>

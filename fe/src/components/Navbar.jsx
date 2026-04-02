@@ -18,7 +18,7 @@ const ANCHORS = [
 ];
 
 /* ─── Anchor link with animated underline ─── */
-function AnchorLink({ to, label, isActive }) {
+function AnchorLink({ to, label, isActive, isDark }) {
   return (
     <Box
       component={RouterLink}
@@ -27,13 +27,14 @@ function AnchorLink({ to, label, isActive }) {
         position: 'relative', textDecoration: 'none',
         px: 1, py: 0.5,
         fontSize: '0.82rem', fontWeight: isActive ? 700 : 500,
-        color: isActive ? '#e0e7ff' : 'rgba(255,255,255,0.5)',
+        color: isActive
+          ? (isDark ? '#e0e7ff' : '#4f46e5')
+          : isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
         transition: 'color 0.2s',
-        '&:hover': { color: 'rgba(255,255,255,0.85)' },
+        '&:hover': { color: isDark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.8)' },
       }}
     >
       {label}
-      {/* Anchor underline indicator */}
       <AnimatePresence>
         {isActive && (
           <motion.div
@@ -97,14 +98,21 @@ export default function Navbar({ onMenuClick }) {
   const unreadCount = notifications.filter(n => !n.read).length;
   const handleLogout = () => { logout(); navigate('/login'); };
 
-  /* ── Icon button style ── */
+  /* ── Icon button style (theme-aware) ── */
   const iconBtnSx = {
     width: 36, height: 36, borderRadius: '10px', display: 'flex',
     alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-    color: 'rgba(255,255,255,0.6)', flexShrink: 0,
-    bgcolor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)',
+    color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)',
+    flexShrink: 0,
+    bgcolor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+    border: '1px solid',
+    borderColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)',
     transition: 'all 0.2s',
-    '&:hover': { bgcolor: 'rgba(255,255,255,0.08)', color: 'white', borderColor: 'rgba(99,102,241,0.3)' },
+    '&:hover': {
+      bgcolor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)',
+      color: isDark ? 'white' : '#0f172a',
+      borderColor: 'rgba(99,102,241,0.3)',
+    },
   };
 
   return (
@@ -173,6 +181,7 @@ export default function Navbar({ onMenuClick }) {
             <AnchorLink
               key={to} to={to} label={label}
               isActive={location.pathname.startsWith(to)}
+              isDark={isDark}
             />
           ))}
         </Box>
@@ -255,7 +264,9 @@ export default function Navbar({ onMenuClick }) {
           sx={{
             display: 'flex', alignItems: 'center', gap: 1,
             pl: 1, pr: 1.25, py: 0.5, borderRadius: '12px', cursor: 'pointer',
-            bgcolor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+            bgcolor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+            border: '1px solid',
+            borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
             transition: 'all 0.2s',
             '&:hover': { bgcolor: 'rgba(99,102,241,0.1)', borderColor: 'rgba(99,102,241,0.25)' },
           }}
@@ -268,7 +279,7 @@ export default function Navbar({ onMenuClick }) {
               <Typography fontSize="0.78rem" fontWeight={700} color={isDark ? 'rgba(255,255,255,0.85)' : '#0f172a'}>
                 {user?.name?.split(' ')[0]}
               </Typography>
-              <ChevronDown size={13} color="rgba(255,255,255,0.4)" />
+              <ChevronDown size={13} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)'} />
             </Box>
           )}
         </Box>
