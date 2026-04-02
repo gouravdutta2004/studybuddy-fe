@@ -33,10 +33,11 @@ export default function LivePoll({ socket, roomId, session, isDark }) {
     if (!draft.question.trim() || draft.options.filter(o => o.trim()).length < 2) return;
     const newPoll = {
       question: draft.question,
-      options: draft.options.filter(o => o.trim()).map(text => ({ text, votes: 0, voters: [] }))
+      options: draft.options.filter(o => o.trim()).map(t => ({ text: t, votes: 0, voters: [] }))
     };
     socket?.emit('poll:create', { roomId, poll: newPoll });
-    setPoll(newPoll); setCreating(false); setVoted(null);
+    // Server will broadcast poll:new to everyone including us — onNew listener handles state
+    setCreating(false);
     setDraft({ question: '', options: ['', ''] });
   };
 

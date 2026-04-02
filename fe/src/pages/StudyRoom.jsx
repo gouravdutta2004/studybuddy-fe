@@ -88,16 +88,10 @@ export default function StudyRoom() {
     };
   }, [id, session, user]);
 
-  // Poll vote relay
-  useEffect(() => {
-    if (!socket) return;
-    socket.on('poll:vote', ({ roomId, optionIndex, userId }) => {
-      socket.emit('poll:update', { roomId, optionIndex, userId });
-    });
-    socket.on('task:add', ({ roomId, task }) => socket.emit('task:add', task));
-    socket.on('task:move', ({ roomId, id, col }) => socket.emit('task:move', { id, col }));
-    socket.on('task:remove', ({ roomId, id }) => socket.emit('task:remove', { id }));
-  }, [socket]);
+  // NOTE: No client-side socket relay needed.
+  // The server broadcasts all events (room_message, task:add, etc.) to
+  // all room members automatically via socket.to(roomId).emit(...).
+  // A client-side relay would cause echo loops and undefined-roomId errors.
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement && whiteboardRef.current) {
