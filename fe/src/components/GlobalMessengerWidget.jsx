@@ -42,6 +42,18 @@ export default function GlobalMessengerWidget() {
     return () => window.removeEventListener('open-messenger', handleOpenMessenger);
   }, []);
 
+  // Navbar trigger listener
+  useEffect(() => {
+    const handler = () => setOpen(prev => !prev);
+    window.addEventListener('open-messenger-widget', handler);
+    return () => window.removeEventListener('open-messenger-widget', handler);
+  }, []);
+
+  // Broadcast unread count to Navbar
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('messenger-unread-update', { detail: { count: unreadTotal } }));
+  }, [unreadTotal]);
+
   // Sync Inbox
   useEffect(() => {
     if (user && open) {
@@ -207,18 +219,7 @@ export default function GlobalMessengerWidget() {
 
   return (
     <>
-      <Box sx={{ position: 'fixed', bottom: 24, right: 104, zIndex: 9999 }}>
-        <Badge badgeContent={unreadTotal} color="error" overlap="circular" sx={{ '& .MuiBadge-badge': { fontWeight: 900, height: 24, minWidth: 24, borderRadius: 12 } }}>
-          <Fab 
-            color="primary" 
-            aria-label="messages" 
-            onClick={() => setOpen(!open)}
-            sx={{ bgcolor: '#3b82f6', width: 64, height: 64, boxShadow: '0 8px 32px rgba(59, 130, 246, 0.5)', '&:hover': { bgcolor: '#2563eb', transform: 'scale(1.05)' }, transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}
-          >
-            {open ? <X size={28} /> : <MessageCircle size={28} />}
-          </Fab>
-        </Badge>
-      </Box>
+      {/* FAB hidden — triggered from Navbar */}
 
       <AnimatePresence>
         {open && (

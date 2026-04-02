@@ -30,6 +30,13 @@ export default function AIAssistantWidget() {
     scrollToBottom();
   }, [messages, loading]);
 
+  // Listen for navbar trigger
+  useEffect(() => {
+    const handler = () => setIsOpen(prev => !prev);
+    window.addEventListener('open-ai-widget', handler);
+    return () => window.removeEventListener('open-ai-widget', handler);
+  }, []);
+
   const handleSend = async () => {
     if (!input.trim()) return;
     
@@ -237,34 +244,7 @@ export default function AIAssistantWidget() {
         )}
       </AnimatePresence>
 
-      {/* Floating Action Button */}
-      <Box
-        component={motion.div}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        sx={{
-          position: 'fixed',
-          bottom: 96,
-          right: 24,
-          zIndex: 9998,
-        }}
-      >
-        <IconButton
-          onClick={() => setIsOpen(!isOpen)}
-          sx={{
-            width: 56,
-            height: 56,
-            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-            color: 'white',
-            boxShadow: '0 8px 24px rgba(139, 92, 246, 0.4)',
-            '&:hover': {
-              background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
-            }
-          }}
-        >
-          {isOpen ? <X size={24} /> : <Sparkles size={24} />}
-        </IconButton>
-      </Box>
+      {/* FAB hidden — triggered from Navbar */}
     </>
   );
 }

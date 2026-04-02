@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme as useCustomTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, User, Menu as MenuIcon, Sun, Moon, Bell, BellRing, BellOff, Sparkles, ChevronDown } from 'lucide-react';
+import { LogOut, User, Menu as MenuIcon, Sun, Moon, Bell, BellRing, BellOff, Sparkles, ChevronDown, MessageCircle, HeadphonesIcon, Bot } from 'lucide-react';
 import api from '../api/axios';
 import { Avatar, Box, Menu, MenuItem, Tooltip, useTheme, useMediaQuery, Badge, Typography, IconButton } from '@mui/material';
 import { usePushNotifications } from '../hooks/usePushNotifications';
@@ -71,8 +71,16 @@ export default function Navbar({ onMenuClick }) {
   const [anchorElNotif, setAnchorElNotif] = useState(null);
   const [anchorElUser, setAnchorElUser] = useState(null);
   const [scrolled, setScrolled] = useState(false);
+  const [messengerUnread, setMessengerUnread] = useState(0);
 
   const { permission, isSubscribed, loading: pushLoading, subscribe, unsubscribe, autoSubscribeIfPermitted } = usePushNotifications();
+
+  // Track messenger unread count from the widget
+  useEffect(() => {
+    const handler = (e) => setMessengerUnread(e.detail?.count ?? 0);
+    window.addEventListener('messenger-unread-update', handler);
+    return () => window.removeEventListener('messenger-unread-update', handler);
+  }, []);
 
   // Scroll detection for shadow depth
   useEffect(() => {
@@ -189,6 +197,90 @@ export default function Navbar({ onMenuClick }) {
 
       {/* ── Right: action icons ── */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: isMobile ? 1 : 'none', justifyContent: 'flex-end' }}>
+
+        {/* ── Widget trigger circles ── */}
+        {user && !user.isAdmin && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+
+            {/* AI Assistant */}
+            <Tooltip title="AI StudyFriend" arrow>
+              <Box
+                component={motion.div}
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={() => window.dispatchEvent(new CustomEvent('open-ai-widget'))}
+                sx={{
+                  width: 34, height: 34, borderRadius: '50%', cursor: 'pointer',
+                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: isDark ? '0 4px 14px rgba(139,92,246,0.45)' : '0 4px 14px rgba(99,102,241,0.3)',
+                  border: '2px solid',
+                  borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(99,102,241,0.25)',
+                  flexShrink: 0,
+                }}
+              >
+                <Sparkles size={15} color="#fff" />
+              </Box>
+            </Tooltip>
+
+            {/* Messenger */}
+            <Tooltip title="Quick Messages" arrow>
+              <Box
+                component={motion.div}
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={() => window.dispatchEvent(new CustomEvent('open-messenger-widget'))}
+                sx={{ position: 'relative', cursor: 'pointer', flexShrink: 0 }}
+              >
+                <Box sx={{
+                  width: 34, height: 34, borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #3b82f6, #06b6d4)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: isDark ? '0 4px 14px rgba(59,130,246,0.45)' : '0 4px 14px rgba(59,130,246,0.25)',
+                  border: '2px solid',
+                  borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(59,130,246,0.25)',
+                }}>
+                  <MessageCircle size={15} color="#fff" />
+                </Box>
+                {messengerUnread > 0 && (
+                  <Box sx={{
+                    position: 'absolute', top: -3, right: -3,
+                    width: 16, height: 16, borderRadius: '50%',
+                    bgcolor: '#ef4444',
+                    border: `2px solid ${isDark ? '#040612' : '#f0f2f8'}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '0.5rem', fontWeight: 900, color: 'white',
+                    lineHeight: 1,
+                  }}>
+                    {messengerUnread > 9 ? '9+' : messengerUnread}
+                  </Box>
+                )}
+              </Box>
+            </Tooltip>
+
+            {/* Support */}
+            <Tooltip title="Support Chat" arrow>
+              <Box
+                component={motion.div}
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={() => navigate('/support')}
+                sx={{
+                  width: 34, height: 34, borderRadius: '50%', cursor: 'pointer',
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: isDark ? '0 4px 14px rgba(16,185,129,0.45)' : '0 4px 14px rgba(16,185,129,0.25)',
+                  border: '2px solid',
+                  borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(16,185,129,0.25)',
+                  flexShrink: 0,
+                }}
+              >
+                <HeadphonesIcon size={15} color="#fff" />
+              </Box>
+            </Tooltip>
+
+          </Box>
+        )}
 
         {/* Notifications */}
         <Tooltip title="Notifications" arrow>

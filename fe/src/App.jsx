@@ -45,6 +45,9 @@ import Analytics from './pages/Analytics';
 import LiveRooms from './pages/LiveRooms';
 
 
+import AIAssistantWidget from './components/AIAssistantWidget';
+import GlobalMessengerWidget from './components/GlobalMessengerWidget';
+import SupportWidget from './components/SupportWidget';
 import CustomCursor from './components/CustomCursor';
 import CommandPalette from './components/CommandPalette';
 import React from 'react';
@@ -112,7 +115,10 @@ const Layout = ({ children }) => {
         </Box>
       </Box>
 
-      {/* Widgets are rendered in Dashboard.jsx only */}
+      {/* Widgets — panels triggered by Navbar circles on any page */}
+      <AIAssistantWidget />
+      <GlobalMessengerWidget />
+      <SupportWidget />
     </Box>
   );
 };
