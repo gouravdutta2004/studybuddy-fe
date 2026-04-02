@@ -57,8 +57,20 @@ export default function PomodoroFocus() {
         const payload = { hoursStudied: 25 / 60 };
         if (activeGoalId) payload.goalId = activeGoalId;
         const res = await api.post('/gamification/session-end', payload);
-        setUser({ ...user, xp: res.data.xp, studyHours: res.data.studyHours, level: res.data.level, weeklyGoals: res.data.weeklyGoals });
-        toast.success(`+${Math.round((25/60)*100)} XP Earned!`);
+        // Patch all updated fields back into the live user object
+        setUser(prev => ({
+          ...prev,
+          xp: res.data.xp,
+          studyHours: res.data.studyHours,
+          totalStudyHours: res.data.totalStudyHours,
+          level: res.data.level,
+          streak: res.data.streak,
+          currentStreak: res.data.streak,
+          badges: res.data.badges,
+          weeklyGoals: res.data.weeklyGoals,
+          lastStudyDate: res.data.lastStudyDate,
+        }));
+        toast.success(`+${Math.round((25/60)*100)} XP · 🔥 ${res.data.streak} day streak!`);
       } catch (err) { }
     } else {
       setMode('focus');

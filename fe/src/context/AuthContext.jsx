@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../api/axios';
 
 const AuthContext = createContext();
@@ -32,15 +32,44 @@ async function tryAutoSubscribePush() {
   }
 }
 
+/**
+ * Fires the daily-ping endpoint and patches the local user object with
+ * the freshest streak / badge data returned from the server.
+ * Idempotent — can be called many times per day safely.
+ */
+async function sendDailyPing(setUser) {
+  try {
+    const { data } = await api.post('/gamification/daily-ping');
+    // Merge new streak/badge/xp data into the cached user object
+    setUser(prev => prev ? {
+      ...prev,
+      streak: data.streak,
+      currentStreak: data.streak,
+      lastStudyDate: data.lastStudyDate,
+      badges: data.badges,
+      xp: data.xp,
+      level: data.level,
+    } : prev);
+  } catch (e) {
+    // Non-critical — don't block the user
+  }
+}
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // On mount: load user from token, then fire the daily ping
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
       api.get('/auth/me')
-        .then(res => { setUser(res.data); tryAutoSubscribePush(); })
+        .then(res => {
+          setUser(res.data);
+          tryAutoSubscribePush();
+          // Fire daily ping after user is loaded — this is what keeps the streak alive
+          sendDailyPing(setUser);
+        })
         .catch(() => localStorage.removeItem('token'))
         .finally(() => setLoading(false));
     } else {
@@ -53,6 +82,8 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('token', data.token);
     setUser(data.user);
     tryAutoSubscribePush();
+    // Fire ping right after login so streak is fresh
+    sendDailyPing(setUser);
     return data;
   };
 
@@ -61,6 +92,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('token', data.token);
     setUser(data.user);
     tryAutoSubscribePush();
+    sendDailyPing(setUser);
     return data;
   };
 
@@ -69,6 +101,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('token', data.token);
     setUser(data.user);
     tryAutoSubscribePush();
+    sendDailyPing(setUser);
     return data;
   };
 
