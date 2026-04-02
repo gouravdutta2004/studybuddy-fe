@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme as useCustomTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, User, Menu as MenuIcon, Sun, Moon, Bell, BellRing, BellOff, Sparkles, ChevronDown, MessageCircle, HeadphonesIcon, Bot } from 'lucide-react';
+import { LogOut, User, Menu as MenuIcon, Sun, Moon, Bell, BellRing, BellOff, Sparkles, ChevronDown, MessageCircle, LifeBuoy } from 'lucide-react';
 import api from '../api/axios';
 import { Avatar, Box, Menu, MenuItem, Tooltip, useTheme, useMediaQuery, Badge, Typography, IconButton } from '@mui/material';
 import { usePushNotifications } from '../hooks/usePushNotifications';
@@ -275,7 +275,7 @@ export default function Navbar({ onMenuClick }) {
                   flexShrink: 0,
                 }}
               >
-                <HeadphonesIcon size={15} color="#fff" />
+                <LifeBuoy size={15} color="#fff" />
               </Box>
             </Tooltip>
 
