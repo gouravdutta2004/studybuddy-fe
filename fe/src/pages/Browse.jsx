@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import api from '../api/axios';
 import {
   Search, SlidersHorizontal, UserPlus, BookOpen, MapPin, Zap, X,
@@ -214,8 +214,8 @@ export default function Browse() {
     setFilters(next); search(next);
   };
 
-  const prev = () => setActiveIdx(i => Math.max(0, i - 1));
-  const next = () => setActiveIdx(i => Math.min(users.length - 1, i + 1));
+  const prev = useCallback(() => setActiveIdx(i => Math.max(0, i - 1)), []);
+  const next = useCallback(() => setActiveIdx(i => Math.min(users.length - 1, i + 1)), [users.length]);
 
   // Drag support
   const dragX = useMotionValue(0);
@@ -225,6 +225,33 @@ export default function Browse() {
     else if (info.offset.x > 60) prev();
     dragX.set(0);
   };
+
+  // ── Keyboard arrow navigation ──
+  useEffect(() => {
+    const handleKey = (e) => {
+      // Don't hijack when typing in an input / select / textarea
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        next();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prev();
+      }
+    };
+
+    // Attach to the scrollable <main> container and window for broader coverage
+    window.addEventListener('keydown', handleKey);
+    const mainEl = document.querySelector('main');
+    if (mainEl) mainEl.addEventListener('keydown', handleKey);
+
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+      if (mainEl) mainEl.removeEventListener('keydown', handleKey);
+    };
+  }, [next, prev]);
 
   const activeCount = Object.values(filters).filter(Boolean).length;
 
