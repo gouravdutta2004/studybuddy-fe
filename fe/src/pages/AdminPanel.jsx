@@ -580,104 +580,170 @@ export default function AdminPanel() {
         ) : (
           <Box component={motion.div} variants={staggerContainer} initial="hidden" animate="visible">
             
-            {/* Analytics Dashboard Matrix Layout */}
+            {/* ── Analytics Dashboard ── */}
             {activeTab === 'dashboard' && (
-              <Grid container spacing={3}>
-                <Grid item xs={12} lg={8}>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    
-                    <Box component={motion.div} variants={fadeUpSpring}>
-                      <TiltCard sx={{ p: 4, background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.01) 100%)', borderColor: 'rgba(16, 185, 129, 0.1)' }}>
-                        <Typography variant="h5" fontWeight={900} mb={3} display="flex" alignItems="center" gap={1.5} color="white">
-                          <Activity color="#10b981" size={28} /> System Core Metrics
-                        </Typography>
-                        <Grid container spacing={3}>
-                          {[
-                            { label: 'Container Uptime', value: `${(systemHealth.uptime / 3600).toFixed(2)}h`, color: '#6366f1', icon: Activity },
-                            { label: 'CPU Load', value: `${systemHealth.cpuUsage}%`, color: '#f59e0b', icon: Cpu },
-                            { label: 'RAM Allocation', value: `${systemHealth.memoryUsage}%`, color: '#8b5cf6', icon: Database },
-                            { label: 'API Env', value: systemHealth.status, color: '#10b981', icon: Check }
-                          ].map((env, i) => (
-                            <Grid item xs={12} sm={6} md={3} key={i}>
-                              <Box sx={{ p: 2.5, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                <Typography variant="caption" fontWeight={800} color="rgba(255,255,255,0.5)" display="flex" alignItems="center" gap={1} mb={1} textTransform="uppercase" letterSpacing={1}>
-                                  <env.icon size={14}/> {env.label}
-                                </Typography>
-                                <Typography variant="h5" fontWeight={900} color={env.color} sx={{ textTransform: 'capitalize' }}>{env.value}</Typography>
-                              </Box>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      </TiltCard>
-                    </Box>
+              <Box component={motion.div} variants={staggerContainer} initial="hidden" animate="visible">
 
-                    <Grid container spacing={3}>
-                      <Grid item xs={12} md={6} component={motion.div} variants={fadeUpSpring}>
-                        <TiltCard sx={{ p: 4, height: 400 }}>
-                          <Typography variant="h6" fontWeight={800} mb={3} display="flex" alignItems="center" gap={1.5}>
-                            <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'rgba(99, 102, 241, 0.1)' }}><BookOpen size={20} color="#818cf8" /></Box>
-                            Topic Ecosystem
-                          </Typography>
-                          <ResponsiveContainer width="100%" height="80%">
-                            <PieChart>
-                              <Pie data={pieData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={8} dataKey="value" stroke="none">
-                                {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                              </Pie>
-                              <RechartsTooltip contentStyle={{ borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(15, 23, 42, 0.9)', backdropFilter: 'blur(10px)', color: 'white', fontWeight: 800 }} />
-                            </PieChart>
-                          </ResponsiveContainer>
-                        </TiltCard>
-                      </Grid>
-                      <Grid item xs={12} md={6} component={motion.div} variants={fadeUpSpring}>
-                        <TiltCard sx={{ p: 4, height: 400 }}>
-                          <Typography variant="h6" fontWeight={800} mb={3} display="flex" alignItems="center" gap={1.5}>
-                            <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'rgba(16, 185, 129, 0.1)' }}><Activity size={20} color="#34d399" /></Box>
-                            Network Velocity
-                          </Typography>
-                          <ResponsiveContainer width="100%" height="80%">
-                            <AreaChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                              <defs>
-                                <linearGradient id="colorGrowth" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
-                                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                                </linearGradient>
-                              </defs>
-                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                              <XAxis dataKey="name" stroke="rgba(255,255,255,0.3)" fontSize={12} tickLine={false} axisLine={false} dy={10} />
-                              <YAxis stroke="rgba(255,255,255,0.3)" fontSize={12} tickLine={false} axisLine={false} />
-                              <RechartsTooltip cursor={{ stroke: '#10b981', strokeWidth: 2, strokeDasharray: '5 5' }} contentStyle={{ borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(15, 23, 42, 0.9)', backdropFilter: 'blur(10px)', color: 'white', fontWeight: 800 }} />
-                              <Area type="monotone" dataKey="total" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorGrowth)" />
-                            </AreaChart>
-                          </ResponsiveContainer>
-                        </TiltCard>
-                      </Grid>
+                {/* Page title */}
+                <Box component={motion.div} variants={fadeUpSpring} sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                  <Box sx={{ p: 1, bgcolor: `${C.indigo}18`, borderRadius: '10px', border: `1px solid ${C.indigo}30` }}><BarChart2 size={20} color={C.indigo} /></Box>
+                  <Typography sx={{ fontFamily: C.mono, fontWeight: 800, fontSize: '1.1rem', letterSpacing: 0.5 }}>Analytics Overview</Typography>
+                  <Box sx={{ ml: 'auto', display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <Box sx={{ px: 1.2, py: 0.4, borderRadius: '6px', border: `1px solid ${C.border}`, fontFamily: C.mono, fontSize: '0.65rem', color: C.muted }}>UTC+{(new Date().getTimezoneOffset()/-60)}:00</Box>
+                  </Box>
+                </Box>
+
+                {/* KPI Row — 4 cards */}
+                <Grid container spacing={2} component={motion.div} variants={fadeUpSpring} sx={{ mb: 3 }}>
+                  {[
+                    { label: 'Total Users', value: dashboardStats.totalUsers || users.filter(u => !u.isAdmin).length, icon: Users, color: C.indigo, onClick: () => { setActiveTab('users'); setActiveUserTab('regular'); } },
+                    { label: 'Daily Active (DAU)', value: dashboardStats.dau || 0, icon: Zap, color: C.amber, onClick: () => { setActiveTab('users'); setUserFilter('dau'); } },
+                    { label: 'Onboarding Drops', value: dashboardStats.dropOffs || 0, icon: XCircle, color: C.red, onClick: () => { setActiveTab('users'); setUserFilter('dropoffs'); } },
+                    { label: 'Pending Reports', value: reports.filter(r => r.status === 'pending').length, icon: MessageSquare, color: C.pink, onClick: () => { setActiveTab('feedback'); setActiveModerationTab('reports'); } },
+                    { label: 'Active Squads', value: squads.length, icon: Users, color: C.cyan, onClick: () => setActiveTab('squads') },
+                    { label: 'Global Subjects', value: subjects.length, icon: BookOpen, color: C.green },
+                    { label: 'Organizations', value: organizations.length, icon: Building, color: '#8b5cf6', onClick: () => setActiveTab('institutions') },
+                    { label: 'Audit Events', value: auditLogs.length, icon: Shield, color: C.muted.replace('0.4', '0.8'), onClick: () => setActiveTab('audit') },
+                  ].map((card, i) => (
+                    <Grid item xs={6} sm={3} key={i}>
+                      <KpiCard {...card} />
                     </Grid>
-                  </Box>
+                  ))}
                 </Grid>
 
-                <Grid item xs={12} lg={4}>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    {statCards.map((stat, i) => (
-                      <Box component={motion.div} variants={fadeUpSpring} key={i}>
-                        <TiltCard onClick={() => handleStatClick(stat.label)} sx={{ p: 3 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
-                            <Avatar sx={{ bgcolor: `${stat.color}20`, color: stat.color, width: 64, height: 64, borderRadius: '20px' }}><stat.icon size={32} /></Avatar>
-                            <Box>
-                              <Typography variant="h3" fontWeight={900} color="white">{stat.value}</Typography>
-                              <Typography variant="caption" fontWeight={800} color="rgba(255,255,255,0.5)" sx={{ textTransform: 'uppercase', letterSpacing: 1 }}>{stat.label}</Typography>
-                            </Box>
+                {/* Charts row */}
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  {/* Growth Area chart — wider */}
+                  <Grid item xs={12} md={8} component={motion.div} variants={fadeUpSpring}>
+                    <TiltCard sx={{ p: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Box sx={{ p: 0.8, borderRadius: '8px', bgcolor: `${C.green}18` }}><Activity size={16} color={C.green} /></Box>
+                          <Typography sx={{ fontFamily: C.mono, fontSize: '0.78rem', fontWeight: 700, letterSpacing: 0.5 }}>USER GROWTH</Typography>
+                        </Box>
+                        <Typography sx={{ fontFamily: C.mono, fontSize: '0.65rem', color: C.muted }}>Last {barData.length} periods</Typography>
+                      </Box>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <AreaChart data={barData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="gradG" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor={C.indigo} stopOpacity={0.35} />
+                              <stop offset="95%" stopColor={C.indigo} stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={`${C.border}`} />
+                          <XAxis dataKey="name" stroke={C.muted} fontSize={11} tickLine={false} axisLine={false} dy={6} fontFamily={C.mono} />
+                          <YAxis stroke={C.muted} fontSize={11} tickLine={false} axisLine={false} fontFamily={C.mono} />
+                          <RechartsTooltip contentStyle={{ borderRadius: '10px', border: `1px solid ${C.border}`, backgroundColor: '#0d1117', color: 'white', fontFamily: C.mono, fontSize: '0.75rem' }} />
+                          <Area type="monotone" dataKey="total" stroke={C.indigo} strokeWidth={2.5} fillOpacity={1} fill="url(#gradG)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </TiltCard>
+                  </Grid>
+
+                  {/* Subject Pie */}
+                  <Grid item xs={12} md={4} component={motion.div} variants={fadeUpSpring}>
+                    <TiltCard sx={{ p: 3, height: '100%' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '8px', bgcolor: `${C.indigo}18` }}><BookOpen size={16} color={C.indigo} /></Box>
+                        <Typography sx={{ fontFamily: C.mono, fontSize: '0.78rem', fontWeight: 700, letterSpacing: 0.5 }}>TOPIC SPLIT</Typography>
+                      </Box>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <PieChart>
+                          <Pie data={pieData.length ? pieData : [{ name: 'No data', value: 1 }]} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={4} dataKey="value" stroke="none">
+                            {pieData.map((_, idx) => <Cell key={idx} fill={COLORS[idx % COLORS.length]} />)}
+                          </Pie>
+                          <RechartsTooltip contentStyle={{ borderRadius: '10px', border: `1px solid ${C.border}`, backgroundColor: '#0d1117', color: 'white', fontFamily: C.mono, fontSize: '0.75rem' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mt: 1 }}>
+                        {pieData.slice(0, 4).map((s, i) => (
+                          <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: COLORS[i % COLORS.length], flexShrink: 0 }} />
+                            <Typography sx={{ fontSize: '0.62rem', fontFamily: C.mono, color: C.muted }}>{s.name}</Typography>
                           </Box>
-                        </TiltCard>
+                        ))}
                       </Box>
-                    ))}
-                    <Box component={motion.div} variants={fadeUpSpring} sx={{ mt: 1, height: 400 }}>
-                      <Box sx={{ height: '100%', bgcolor: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '24px', overflow: 'hidden' }}>
-                        <GlobalActivityFeed />
-                      </Box>
-                    </Box>
-                  </Box>
+                    </TiltCard>
+                  </Grid>
                 </Grid>
-              </Grid>
+
+                {/* Bottom row: System Health + Activity Feed + Quick Actions */}
+                <Grid container spacing={2}>
+
+                  {/* System Health */}
+                  <Grid item xs={12} md={5} component={motion.div} variants={fadeUpSpring}>
+                    <TiltCard sx={{ p: 3, height: '100%' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '8px', bgcolor: `${C.green}18` }}><Cpu size={16} color={C.green} /></Box>
+                        <Typography sx={{ fontFamily: C.mono, fontSize: '0.78rem', fontWeight: 700, letterSpacing: 0.5 }}>SYSTEM HEALTH</Typography>
+                        <Box sx={{ ml: 'auto' }}><StatusPill label={systemHealth.status || 'healthy'} /></Box>
+                      </Box>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {[
+                          { label: 'CPU', value: systemHealth.cpuUsage || 0, color: C.amber, max: 100 },
+                          { label: 'RAM', value: systemHealth.memoryUsage || 0, color: C.indigo, max: 100 },
+                          { label: 'Uptime', value: ((systemHealth.uptime || 0) / 3600).toFixed(1), color: C.green, isText: true },
+                          { label: 'DB State', value: systemHealth.dbState === 1 ? 'connected' : 'degraded', color: systemHealth.dbState === 1 ? C.green : C.red, isText: true },
+                        ].map((m, i) => (
+                          <Box key={i}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                              <Typography sx={{ fontFamily: C.mono, fontSize: '0.68rem', color: C.muted, textTransform: 'uppercase', letterSpacing: 0.8 }}>{m.label}</Typography>
+                              <Typography sx={{ fontFamily: C.mono, fontSize: '0.68rem', color: m.color, fontWeight: 700, textTransform: 'capitalize' }}>{m.isText ? m.value : `${m.value}%`}</Typography>
+                            </Box>
+                            {!m.isText && (
+                              <Box sx={{ height: 4, borderRadius: 4, bgcolor: `${m.color}20`, overflow: 'hidden' }}>
+                                <Box sx={{ width: `${Math.min(m.value, 100)}%`, height: '100%', bgcolor: m.color, transition: 'width 1s', borderRadius: 4 }} />
+                              </Box>
+                            )}
+                          </Box>
+                        ))}
+                      </Box>
+                    </TiltCard>
+                  </Grid>
+
+                  {/* Live Activity Feed */}
+                  <Grid item xs={12} md={4} component={motion.div} variants={fadeUpSpring}>
+                    <TiltCard sx={{ overflow: 'hidden', height: 300 }}>
+                      <GlobalActivityFeed />
+                    </TiltCard>
+                  </Grid>
+
+                  {/* Quick Admin Actions */}
+                  <Grid item xs={12} md={3} component={motion.div} variants={fadeUpSpring}>
+                    <TiltCard sx={{ p: 3, height: '100%' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '8px', bgcolor: `${C.cyan}18` }}><Zap size={16} color={C.cyan} /></Box>
+                        <Typography sx={{ fontFamily: C.mono, fontSize: '0.78rem', fontWeight: 700, letterSpacing: 0.5 }}>QUICK ACTIONS</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                        {[
+                          { label: 'Broadcast Email', icon: Mail, color: C.pink, action: () => setShowBroadcastModal(true) },
+                          { label: 'Add New User', icon: UserPlus, color: C.indigo, action: () => { setActiveTab('users'); setShowModal(true); }, adminOnly: true },
+                          { label: 'Inject Quest', icon: Flame, color: C.amber, action: () => setActiveTab('gamification') },
+                          { label: 'Moderation Hub', icon: Shield, color: C.red, action: () => setActiveTab('feedback') },
+                          { label: 'Platform Engine', icon: Sliders, color: C.green, action: () => setActiveTab('engine'), adminOnly: true },
+                          { label: 'Audit Trail', icon: Activity, color: C.muted.replace('0.4','0.7'), action: () => setActiveTab('audit') },
+                        ].filter(a => !a.adminOnly || role === 'Super Admin').map((a, i) => (
+                          <Button key={i} onClick={a.action} fullWidth
+                            sx={{
+                              justifyContent: 'flex-start', gap: 1.5, px: 1.5, py: 1,
+                              borderRadius: '8px', bgcolor: `${a.color}10`,
+                              border: `1px solid ${a.color}25`, color: a.color,
+                              fontFamily: C.mono, fontSize: '0.72rem', fontWeight: 700,
+                              textTransform: 'none', letterSpacing: 0.3,
+                              '&:hover': { bgcolor: `${a.color}20`, borderColor: `${a.color}50` },
+                            }}
+                          >
+                            <a.icon size={15} />{a.label}
+                          </Button>
+                        ))}
+                      </Box>
+                    </TiltCard>
+                  </Grid>
+
+                </Grid>
+              </Box>
             )}
 
             {/* Entities Management (Users) */}
