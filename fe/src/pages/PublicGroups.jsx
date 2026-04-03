@@ -143,7 +143,7 @@ export default function PublicGroups() {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', py: 6, px: { xs: 2, md: 4 }, bgcolor: isDark ? '#050505' : '#f0f0f0', backgroundImage: isDark ? 'radial-gradient(circle at 50% 0, rgba(255, 70, 85, 0.05), transparent 60%)' : 'none' }}>
+    <Box sx={{ py: 6, px: { xs: 2, md: 4 }, bgcolor: isDark ? '#050505' : '#f0f0f0', backgroundImage: isDark ? 'radial-gradient(circle at 50% 0, rgba(255, 70, 85, 0.05), transparent 60%)' : 'none' }}>
       <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
         
         {/* Header */}

@@ -269,7 +269,7 @@ export default function LiveRooms() {
   const surf = isDark ? '#080c14' : '#f6f8fa';
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: surf, pb: 8 }}>
+    <Box sx={{ bgcolor: surf, pb: 8 }}>
       <Box sx={{ maxWidth: 900, mx: 'auto', px: { xs: 2, md: 4 }, pt: 4 }}>
 
         {/* Header */}

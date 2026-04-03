@@ -91,7 +91,7 @@ export default function Connections() {
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}><CircularProgress size={56} thickness={4} sx={{ color: '#6366f1' }} /></Box>;
 
   return (
-    <Box sx={{ minHeight: '100vh', py: 6, px: { xs: 2, md: 4 }, position: 'relative', overflow: 'hidden' }}>
+    <Box sx={{ py: 6, px: { xs: 2, md: 4 }, position: 'relative', overflow: 'hidden' }}>
       {/* Circle Ambient Geometry */}
       <Box sx={{ position: 'absolute', top: '-10%', left: '-10%', width: '120vw', height: '120vw', border: '1px solid', borderColor: isDark ? 'rgba(99,102,241,0.05)' : 'rgba(99,102,241,0.05)', borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
       <Box sx={{ position: 'absolute', top: '10%', left: '10%', width: '80vw', height: '80vw', border: '1px dashed', borderColor: isDark ? 'rgba(99,102,241,0.1)' : 'rgba(99,102,241,0.1)', borderRadius: '50%', zIndex: 0, pointerEvents: 'none', animation: 'spin 120s linear infinite' }} />

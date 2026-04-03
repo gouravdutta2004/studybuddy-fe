@@ -76,38 +76,74 @@ const Layout = ({ children }) => {
   const muiTheme = useTheme();
   
   return (
-    <Box sx={
-      {
-        display: 'flex',
-        minHeight: '100vh',
-        p: { xs: 0, md: 2 },
-        gap: { xs: 0, md: 2 },
-        bgcolor: 'background.default',
-        transition: 'background-color 0.3s ease',
-      }
-    }>
+    <Box sx={{
+      display: 'flex',
+      height: '100vh',
+      overflow: 'hidden',
+      p: { xs: 0, md: 2 },
+      gap: { xs: 0, md: 2 },
+      bgcolor: 'background.default',
+      transition: 'background-color 0.3s ease',
+    }}>
       <CommandPalette />
 
       {/* Mobile Drawer */}
-      <Drawer anchor="left" open={mobileOpen} onClose={() => setMobileOpen(false)} PaperProps={{ sx: { width: 280, border: 'none', bgcolor: muiTheme.palette.mode === 'dark' ? 'rgba(4,6,18,0.98)' : 'rgba(255,255,255,0.98)' } }}>
+      <Drawer
+        anchor="left"
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        PaperProps={{
+          sx: {
+            width: 280, border: 'none',
+            bgcolor: muiTheme.palette.mode === 'dark'
+              ? 'rgba(4,6,18,0.98)'
+              : 'rgba(255,255,255,0.98)',
+          }
+        }}
+      >
         <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       </Drawer>
-      
+
       {/* Desktop Sidebar */}
       <Sidebar mobileOpen={false} setMobileOpen={() => {}} />
 
-      {/* Main Content Area */}
-      <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflowX: 'hidden', bgcolor: 'background.default', transition: 'background-color 0.3s ease' }}>
+      {/* Main Content Column — scrolls independently */}
+      <Box sx={{
+        flexGrow: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        minWidth: 0,
+        minHeight: 0,
+        overflow: 'hidden',
+        bgcolor: 'background.default',
+        transition: 'background-color 0.3s ease',
+        borderRadius: { xs: 0, md: '20px' },
+      }}>
         <GlobalAnnouncementBanner />
         <Navbar onMenuClick={() => setMobileOpen(true)} />
-        <Box component="main" sx={{ flexGrow: 1, p: 0, overflowX: 'hidden' }}>
+
+        {/* Scrollable page area */}
+        <Box
+          component="main"
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            '&::-webkit-scrollbar': { width: '5px' },
+            '&::-webkit-scrollbar-track': { background: 'transparent' },
+            '&::-webkit-scrollbar-thumb': { background: 'var(--border-strong)', borderRadius: '99px' },
+            '&::-webkit-scrollbar-thumb:hover': { background: 'rgba(99,102,241,0.4)' },
+          }}
+        >
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
-              initial={{ opacity: 0, y: 15, filter: 'blur(4px)' }}
+              initial={{ opacity: 0, y: 12, filter: 'blur(3px)' }}
               animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, y: -15, filter: 'blur(4px)' }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
+              exit={{ opacity: 0, y: -12, filter: 'blur(3px)' }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              style={{ minHeight: '100%' }}
             >
               {children}
             </motion.div>
@@ -115,13 +151,14 @@ const Layout = ({ children }) => {
         </Box>
       </Box>
 
-      {/* Widgets — panels triggered by Navbar circles on any page */}
+      {/* Global widgets */}
       <AIAssistantWidget />
       <GlobalMessengerWidget />
       <SupportWidget />
     </Box>
   );
 };
+
 
 export default function App() {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1000000000000-dummyclientid.apps.googleusercontent.com';

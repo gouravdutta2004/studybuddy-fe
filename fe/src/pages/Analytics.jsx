@@ -185,7 +185,7 @@ export default function Analytics() {
   const focusDelta = prevAvgFocus > 0 ? Math.round(((avgFocusHours - prevAvgFocus) / prevAvgFocus) * 100) : 0;
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: surf, color: isDark ? '#e5e7eb' : '#111827', pb: 8 }}>
+    <Box sx={{ bgcolor: surf, color: isDark ? '#e5e7eb' : '#111827', pb: 8 }}>
       <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 2, md: 4 }, pt: 4 }}>
 
         {/* Header */}

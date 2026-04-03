@@ -66,11 +66,20 @@ export function ThemeProvider({ children }) {
       },
     },
     typography: {
-      fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-      h1: { fontWeight: 800, letterSpacing: '-0.025em' },
-      h2: { fontWeight: 700, letterSpacing: '-0.025em' },
-      h3: { fontWeight: 700, letterSpacing: '-0.025em' },
-      button: { textTransform: 'none', fontWeight: 600 },
+      fontFamily: '"Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      h1: { fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.15 },
+      h2: { fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.2 },
+      h3: { fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.25 },
+      h4: { fontWeight: 700, letterSpacing: '-0.015em' },
+      h5: { fontWeight: 700 },
+      h6: { fontWeight: 700 },
+      subtitle1: { fontWeight: 600 },
+      subtitle2: { fontWeight: 600 },
+      body1: { fontWeight: 400, lineHeight: 1.6 },
+      body2: { fontWeight: 400, lineHeight: 1.55 },
+      button: { textTransform: 'none', fontWeight: 700, letterSpacing: '-0.01em' },
+      caption: { fontWeight: 600 },
+      overline: { fontWeight: 800, letterSpacing: '0.1em' },
     },
     shape: { borderRadius: 16 },
     components: {
@@ -153,8 +162,93 @@ export function ThemeProvider({ children }) {
       MuiLinearProgress: {
         styleOverrides: {
           root: {
-            borderRadius: 4,
+            borderRadius: 6,
             backgroundColor: themeMode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+          },
+        },
+      },
+      MuiTooltip: {
+        styleOverrides: {
+          tooltip: {
+            backgroundColor: themeMode === 'dark' ? '#1e2130' : '#0f172a',
+            color: '#f1f5f9',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            borderRadius: 8,
+            padding: '6px 12px',
+            fontFamily: '"Plus Jakarta Sans", sans-serif',
+            boxShadow: themeMode === 'dark'
+              ? '0 8px 24px rgba(0,0,0,0.5)'
+              : '0 8px 24px rgba(0,0,0,0.15)',
+            border: `1px solid ${themeMode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.1)'}`,
+          },
+          arrow: {
+            color: themeMode === 'dark' ? '#1e2130' : '#0f172a',
+          },
+        },
+      },
+      MuiSkeleton: {
+        styleOverrides: {
+          root: {
+            backgroundColor: themeMode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)',
+            borderRadius: 8,
+          },
+        },
+      },
+      MuiAlert: {
+        styleOverrides: {
+          root: {
+            borderRadius: 12,
+            fontSize: '0.85rem',
+            fontWeight: 500,
+            fontFamily: '"Plus Jakarta Sans", sans-serif',
+          },
+        },
+      },
+      MuiDivider: {
+        styleOverrides: {
+          root: {
+            borderColor: themeMode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)',
+          },
+        },
+      },
+      MuiIconButton: {
+        styleOverrides: {
+          root: {
+            borderRadius: 10,
+            transition: 'all 0.2s ease',
+          },
+        },
+      },
+      MuiAvatar: {
+        styleOverrides: {
+          root: {
+            fontFamily: '"Plus Jakarta Sans", sans-serif',
+            fontWeight: 800,
+          },
+        },
+      },
+      MuiListItemButton: {
+        styleOverrides: {
+          root: {
+            borderRadius: 10,
+            transition: 'all 0.2s ease',
+          },
+        },
+      },
+      MuiTableCell: {
+        styleOverrides: {
+          root: {
+            borderBottom: `1px solid ${themeMode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+            fontSize: '0.875rem',
+            fontFamily: '"Plus Jakarta Sans", sans-serif',
+          },
+          head: {
+            fontWeight: 800,
+            fontSize: '0.75rem',
+            letterSpacing: '0.05em',
+            textTransform: 'uppercase',
+            color: themeMode === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)',
           },
         },
       },

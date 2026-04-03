@@ -404,7 +404,6 @@ export default function Arcade() {
 
   return (
     <Box sx={{
-      minHeight: '100vh',
       bgcolor: isDark ? '#050912' : '#f0f4ff',
       position: 'relative',
       py: { xs: 3, md: 4 },

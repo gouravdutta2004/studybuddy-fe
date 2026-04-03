@@ -315,7 +315,7 @@ export default function Gamification() {
   const BADGE_EMOJI = { 'Bronze Scholar': '🥉', 'Silver Scholar': '🥈', 'Gold Scholar': '🥇', '7-Day Star': '⭐', 'Session King': '👑' };
 
   return (
-    <Box sx={{ minHeight: '100vh', py: { xs: 2, md: 3 }, px: { xs: 2, sm: 3, md: 4 }, position: 'relative',
+    <Box sx={{ py: { xs: 2, md: 3 }, px: { xs: 2, sm: 3, md: 4 }, position: 'relative',
       bgcolor: isDark ? '#050914' : '#f0f4ff',
     }}>
       <Scanlines />

@@ -82,11 +82,20 @@ export default function Navbar({ onMenuClick }) {
     return () => window.removeEventListener('messenger-unread-update', handler);
   }, []);
 
-  // Scroll detection for shadow depth
+  // Scroll detection — listen on both window and the inner main scroll container
   useEffect(() => {
-    const h = () => setScrolled(window.scrollY > 10);
-    window.addEventListener('scroll', h);
-    return () => window.removeEventListener('scroll', h);
+    const getScrolled = () => {
+      const mainEl = document.querySelector('main');
+      return (window.scrollY > 10) || (mainEl ? mainEl.scrollTop > 10 : false);
+    };
+    const h = () => setScrolled(getScrolled());
+    window.addEventListener('scroll', h, { passive: true });
+    const mainEl = document.querySelector('main');
+    if (mainEl) mainEl.addEventListener('scroll', h, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', h);
+      if (mainEl) mainEl.removeEventListener('scroll', h);
+    };
   }, []);
 
   useEffect(() => {

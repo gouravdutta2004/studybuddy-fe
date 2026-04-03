@@ -53,7 +53,7 @@ export default function GroupDetails() {
   ];
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: isDark ? '#050505' : '#f0f0f0', backgroundImage: isDark ? 'radial-gradient(circle at 10% 20%, rgba(255, 70, 85, 0.03), transparent 40%)' : 'none', pt: 4, pb: 8, fontFamily: SANS }}>
+    <Box sx={{ bgcolor: isDark ? '#050505' : '#f0f0f0', backgroundImage: isDark ? 'radial-gradient(circle at 10% 20%, rgba(255, 70, 85, 0.03), transparent 40%)' : 'none', pt: 4, pb: 8, fontFamily: SANS }}>
       <Box sx={{ maxWidth: '1400px', mx: 'auto', px: 3 }}>
         
         {/* Header */}

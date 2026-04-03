@@ -494,7 +494,7 @@ export default function Flashcards() {
   const suggestedTopics = ['Quantum Physics', 'React Hooks', 'French Revolution', 'Machine Learning', 'DBMS', 'Operating Systems', 'Calculus', 'Economics', 'World War II', 'Organic Chemistry'];
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: surf, color: isDark ? '#e5e7eb' : '#111827', fontFamily: "'Inter', sans-serif", pb: 8 }}>
+    <Box sx={{ bgcolor: surf, color: isDark ? '#e5e7eb' : '#111827', fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif", pb: 8 }}>
       <Box sx={{ maxWidth: 820, mx: 'auto', px: { xs: 2, md: 4 }, pt: 4 }}>
 
         {/* Header */}

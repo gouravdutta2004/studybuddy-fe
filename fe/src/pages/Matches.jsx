@@ -89,7 +89,7 @@ export default function Matches() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', py: 6, px: 2, position: 'relative', overflow: 'hidden' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 6, px: 2, position: 'relative', overflow: 'hidden' }}>
       {/* Dynamic Background */}
       <Box sx={{ position: 'fixed', top: '10%', left: '-10%', width: 500, height: 500, bgcolor: 'rgba(139, 92, 246, 0.1)', borderRadius: '50%', filter: 'blur(120px)', zIndex: 0, pointerEvents: 'none' }} />
       <Box sx={{ position: 'fixed', bottom: '-10%', right: '-10%', width: 500, height: 500, bgcolor: 'rgba(16, 185, 129, 0.05)', borderRadius: '50%', filter: 'blur(120px)', zIndex: 0, pointerEvents: 'none' }} />

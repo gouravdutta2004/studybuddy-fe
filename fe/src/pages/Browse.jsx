@@ -239,7 +239,7 @@ export default function Browse() {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', py: { xs: 3, md: 5 }, px: { xs: 2, sm: 3, md: 4 }, position: 'relative', overflow: 'hidden' }}>
+    <Box sx={{ py: { xs: 3, md: 5 }, px: { xs: 2, sm: 3, md: 4 }, position: 'relative', overflow: 'hidden' }}>
       {/* Ambient */}
       <Box sx={{ position: 'fixed', top: '10%', left: '5%', width: 700, height: 700, background: 'radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%)', zIndex: 0, pointerEvents: 'none' }} />
       <Box sx={{ position: 'fixed', bottom: '10%', right: '5%', width: 500, height: 500, background: 'radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%)', zIndex: 0, pointerEvents: 'none' }} />

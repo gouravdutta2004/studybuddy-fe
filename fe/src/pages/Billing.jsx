@@ -177,7 +177,7 @@ export default function Billing() {
   const textSecondary = isDark ? 'rgba(255,255,255,0.55)' : '#6b7280';
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: bg, py: { xs: 5, md: 8 } }}>
+    <Box sx={{ bgcolor: bg, py: { xs: 5, md: 8 } }}>
       <Container maxWidth="lg">
 
         {/* Page Header */}

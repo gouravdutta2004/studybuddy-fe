@@ -177,9 +177,9 @@ export default function Messages() {
 
   return (
     <Box sx={{
-      height: 'calc(100vh - 32px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      px: { xs: 0, md: 2 }, py: { xs: 0, md: 2 },
+      height: '100%',
+      display: 'flex', alignItems: 'stretch', justifyContent: 'center',
+      px: { xs: 0, md: 1.5 }, py: { xs: 0, md: 1.5 },
       bgcolor: bg,
     }}>
       <Box sx={{

@@ -237,7 +237,7 @@ export default function Leaderboard() {
   const myRank = leaders.findIndex(l => l._id === user?._id) + 1;
 
   return (
-    <Box sx={{ minHeight: '100vh', py: 4, px: { xs: 2, md: 4 }, position: 'relative', overflow: 'hidden' }}>
+    <Box sx={{ py: 4, px: { xs: 2, md: 4 }, position: 'relative', overflow: 'hidden' }}>
       {/* Ambient BG */}
       <Box sx={{ position: 'absolute', top: '-10%', left: '30%', width: 700, height: 700, background: 'radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)', zIndex: 0, pointerEvents: 'none' }} />
       <Box sx={{ position: 'absolute', bottom: '-5%', right: '10%', width: 500, height: 500, background: 'radial-gradient(circle, rgba(56,189,248,0.07) 0%, transparent 70%)', zIndex: 0, pointerEvents: 'none' }} />

@@ -158,11 +158,12 @@ export default function Sidebar({ mobileOpen = false, setMobileOpen = () => {} }
         height: '100%', display: 'flex', flexDirection: 'column',
         width: railWidth, transition: 'width 0.25s cubic-bezier(.4,0,.2,1)',
         overflow: 'hidden',
-        bgcolor: isDark ? 'rgba(4,6,18,0.96)' : 'rgba(255,255,255,0.96)',
+        bgcolor: isDark ? 'rgba(4,6,18,0.97)' : 'rgba(255,255,255,0.97)',
         backdropFilter: 'blur(24px)',
-        borderRight: '1px solid',
+        border: '1px solid',
         borderColor: isDark ? 'rgba(99,102,241,0.1)' : 'rgba(0,0,0,0.07)',
-        boxShadow: isDark ? '4px 0 32px rgba(0,0,0,0.5)' : '4px 0 20px rgba(0,0,0,0.06)',
+        boxShadow: isDark ? '0 4px 32px rgba(0,0,0,0.4)' : '0 4px 20px rgba(0,0,0,0.06)',
+        borderRadius: { xs: 0, md: '20px' },
         willChange: 'width, background-color',
       }}
     >
@@ -267,7 +268,14 @@ export default function Sidebar({ mobileOpen = false, setMobileOpen = () => {} }
   if (mobileOpen) return RailContent;
 
   return (
-    <Box sx={{ display: { xs: 'none', md: 'flex' }, height: '100vh', position: 'sticky', top: 0, flexShrink: 0, zIndex: 100, width: railWidth, transition: 'width 0.25s cubic-bezier(.4,0,.2,1)' }}>
+    <Box sx={{
+      display: { xs: 'none', md: 'flex' },
+      height: '100%',
+      flexShrink: 0,
+      zIndex: 100,
+      width: railWidth,
+      transition: 'width 0.25s cubic-bezier(.4,0,.2,1)',
+    }}>
       {RailContent}
     </Box>
   );

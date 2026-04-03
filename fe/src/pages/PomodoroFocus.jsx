@@ -103,7 +103,7 @@ export default function PomodoroFocus() {
   const strokeDashoffset = circumference - (timeLeft / totalDuration) * circumference;
 
   return (
-    <Box sx={{ minHeight: '100vh', pt: 10, pb: 4, bgcolor: mode === 'focus' ? (isDark ? '#020617' : '#f8fafc') : (isDark ? '#064e3b' : '#ecfdf5'), transition: 'background-color 0.5s ease', position: 'relative', overflow: 'hidden' }}>
+    <Box sx={{ pt: 10, pb: 4, bgcolor: mode === 'focus' ? (isDark ? '#020617' : '#f8fafc') : (isDark ? '#064e3b' : '#ecfdf5'), transition: 'background-color 0.5s ease', position: 'relative', overflow: 'hidden' }}>
       
       {/* Background Particles Element */}
       {isActive && mode === 'focus' && (

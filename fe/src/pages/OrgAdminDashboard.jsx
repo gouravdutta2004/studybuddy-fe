@@ -137,7 +137,7 @@ export default function OrgAdminDashboard() {
   ];
 
   return (
-    <Box sx={{ bgcolor: isDark ? '#020617' : '#f8f9fa', minHeight: '100vh', color: isDark ? 'white' : '#0f172a', position: 'relative', overflow: 'hidden' }}>
+    <Box sx={{ bgcolor: isDark ? '#020617' : '#f8f9fa', color: isDark ? 'white' : '#0f172a', position: 'relative', overflow: 'hidden' }}>
       {/* Background Ambience */}
       <Box sx={{ position: 'fixed', top: '-10%', left: '-5%', width: 500, height: 500, bgcolor: 'rgba(99, 102, 241, 0.05)', borderRadius: '50%', filter: 'blur(100px)', zIndex: 0, pointerEvents: 'none' }} />
       <Box sx={{ position: 'fixed', bottom: '-10%', right: '-5%', width: 500, height: 500, bgcolor: 'rgba(16, 185, 129, 0.05)', borderRadius: '50%', filter: 'blur(100px)', zIndex: 0, pointerEvents: 'none' }} />

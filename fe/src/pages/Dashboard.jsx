@@ -353,7 +353,7 @@ export default function Dashboard() {
 
   return (
     <Box ref={containerRef} sx={{
-      minHeight: '100vh', pb: 10,
+      py: { xs: 3, md: 4 }, pb: 10,
       bgcolor: isDark ? '#05080f' : '#f0f2f8',
       color: isDark ? '#e5e7eb' : '#111827',
       fontFamily: "'Inter', sans-serif",
