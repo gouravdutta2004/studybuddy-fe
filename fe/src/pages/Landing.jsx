@@ -4,6 +4,7 @@ import VideoShowcase from '../components/landing/VideoShowcase';
 import CoreFeatures from '../components/landing/CoreFeatures';
 import PlayableSandbox from '../components/landing/PlayableSandbox';
 import HowItWorks from '../components/landing/HowItWorks';
+import logoImg from '../assets/logo.png';
 
 /* ─── Global Tokens ─── */
 const css = `
@@ -216,7 +217,7 @@ function Navbar() {
   return (
     <>
       <nav className={`sf-nav${scrolled?' sc':''}`} id="sf-nav">
-        <a href="#top" className="sf-brand"><img src="/logo.png" className="sf-bicon" alt="Logo" /><span>StudyFriend</span></a>
+        <a href="#top" className="sf-brand"><img src={logoImg} className="sf-bicon" alt="Logo" /><span>StudyFriend</span></a>
         <div className="sf-nl">
           <a href="#features">Features</a>
           <a href="#watch">Demo</a>
@@ -316,7 +317,7 @@ export default function Landing() {
       <style>{css}</style>
 
       {/* Loader */}
-      <div id="sf-loader"><div className="ll"><img src="/logo.png" className="lbox" alt="Logo" /><span>StudyFriend</span></div></div>
+      <div id="sf-loader"><div className="ll"><img src={logoImg} className="lbox" alt="Logo" /><span>StudyFriend</span></div></div>
 
       {/* Scroll progress */}
       <div className="sp-bar" ref={spRef}/>
@@ -361,7 +362,7 @@ export default function Landing() {
       {/* FOOTER */}
       <footer>
         <div className="sf-w">
-          <div className="fb2"><img src="/logo.png" className="sf-bicon" style={{width:30,height:30}} alt="Logo" /><span>StudyFriend</span></div>
+          <div className="fb2"><img src={logoImg} className="sf-bicon" style={{width:30,height:30}} alt="Logo" /><span>StudyFriend</span></div>
           <p className="fc2">© 2026 StudyFriend Inc. · <a href="/login" style={{color:'#a78bfa'}}>Log In</a> · <a href="/register" style={{color:'#a78bfa'}}>Sign Up</a></p>
         </div>
       </footer>

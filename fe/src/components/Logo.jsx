@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import logoImg from '../assets/logo.png';
 
 export default function Logo({ size = 36, showText = true, textColor }) {
   return (
@@ -12,7 +13,7 @@ export default function Logo({ size = 36, showText = true, textColor }) {
         whileTap={{ scale: 0.95 }}
         style={{ display: 'flex', cursor: 'pointer' }}
       >
-        <img src="/logo.png" alt="StudyFriend Logo" style={{ width: size, height: size, objectFit: 'contain', borderRadius: '25%' }} />
+        <img src={logoImg} alt="StudyFriend Logo" style={{ width: size, height: size, objectFit: 'contain', borderRadius: '25%' }} />
       </motion.div>
 
       {/* Brand Name Text */}

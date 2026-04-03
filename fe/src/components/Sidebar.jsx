@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import logoImg from '../assets/logo.png';
 
 /* ─── Nav items ─── */
 const NAV = [
@@ -168,7 +169,7 @@ export default function Sidebar({ mobileOpen = false, setMobileOpen = () => {} }
       {/* ── Logo / Brand ── */}
       <Box sx={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: expanded ? 'flex-start' : 'center', px: expanded ? 2 : 0, flexShrink: 0, borderBottom: '1px solid', borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)' }}>
         <Box sx={{ width: 36, height: 36, borderRadius: '10px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 0 16px rgba(99,102,241,0.4)', bgcolor: 'white' }}>
-          <img src="/logo.png" alt="StudyFriend" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img src={logoImg} alt="StudyFriend" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </Box>
         <AnimatePresence>
           {expanded && (
