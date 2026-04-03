@@ -78,6 +78,9 @@ export default function AdminPanel() {
   const [feedback, setFeedback] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [organizations, setOrganizations] = useState([]);
+  const [squads, setSquads] = useState([]);
+  const [quests, setQuests] = useState([]);
+  const [questInput, setQuestInput] = useState('');
   const [siteConfig, setSiteConfig] = useState({ welcomeTitle: 'Welcome back, {name}! 👋', welcomeSubtitle: 'Find your perfect studyfriend and achieve your goals together.', showQuickActions: true, showSuggestedMatches: true, showStatCards: true, showProfileIncompleteBanner: true, announcementBannerActive: false, announcementBannerText: '', emailTemplateWelcome: '', emailTemplateReset: '', emailTemplateBroadcast: '' });
   const [loading, setLoading] = useState(true);
   
@@ -108,7 +111,7 @@ export default function AdminPanel() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [userRes, connRes, subRes, confRes, dashRes, growthRes, sessRes, healthRes, reportsRes, auditRes, flaggedRes, lbRes, orgsRes, pendingRes, feedbackRes] = await Promise.all([
+      const [userRes, connRes, subRes, confRes, dashRes, growthRes, sessRes, healthRes, reportsRes, auditRes, flaggedRes, lbRes, orgsRes, pendingRes, feedbackRes, squadsRes, questsRes] = await Promise.all([
         api.get('/admin/users'), api.get('/admin/connections'), api.get('/admin/subjects'), api.get('/settings').catch(() => ({ data: {} })),
         api.get('/admin/analytics/dashboard').catch(() => ({ data: {} })), api.get('/admin/analytics/growth').catch(() => ({ data: [] })),
         api.get('/admin/analytics/sessions').catch(() => ({ data: [] })), api.get('/admin/health').catch(() => ({ data: {} })),
@@ -116,7 +119,9 @@ export default function AdminPanel() {
         api.get('/admin/content-scan').catch(() => ({ data: [] })), api.get('/admin/gamification/leaderboard').catch(() => ({ data: [] })),
         api.get('/admin/organizations').catch(() => ({ data: [] })),
         api.get('/admin/pending-users/global').catch(() => ({ data: [] })),
-        api.get('/admin/feedback').catch(() => ({ data: [] }))
+        api.get('/admin/feedback').catch(() => ({ data: [] })),
+        api.get('/admin/squads').catch(() => ({ data: [] })),
+        api.get('/admin/gamification/quests').catch(() => ({ data: [] }))
       ]);
       setUsers(userRes.data); setConnections(connRes.data); setSubjects(subRes.data);
       if (confRes.data && Object.keys(confRes.data).length > 0) setSiteConfig(confRes.data);
@@ -128,6 +133,8 @@ export default function AdminPanel() {
       setOrganizations(orgsRes.data || []);
       setGlobalPendingUsers(pendingRes.data || []);
       setFeedback(feedbackRes.data || []);
+      setSquads(squadsRes.data || []);
+      setQuests(questsRes.data || []);
     } catch { toast.error('Failed to load dashboard metrics'); }
     finally { setLoading(false); }
   };
@@ -229,6 +236,19 @@ export default function AdminPanel() {
     finally { setSaving(false); }
   };
 
+  const handleDisbandSquad = async (id) => {
+    if (!window.confirm('WARNING God-Mode action: Force permanently disband this Squad?')) return;
+    try { await api.delete(`/admin/squads/${id}`); toast.success('Squad completely vaporized'); fetchData(); }
+    catch (err) { toast.error(err.response?.data?.message || 'Failed to disband'); }
+  };
+
+  const handleInjectQuest = async (e) => {
+    e.preventDefault(); setSaving(true);
+    try { await api.post('/admin/gamification/quests', { task: questInput }); toast.success('Global quest injected into system economy'); setQuestInput(''); fetchData(); }
+    catch (err) { toast.error(err.response?.data?.message || 'Injection failed'); }
+    finally { setSaving(false); }
+  };
+
   const exportUsersCSV = () => {
     const headers = ['Database ID', 'Name', 'Email', 'Active Status', 'Subjects', 'Study Style', 'Location', 'Member Since'];
     const csvContent = [headers.join(','), ...filteredRegularUsers.map(u => [`"${u._id}"`, `"${u.name}"`, `"${u.email}"`, u.isActive ? 'Active' : 'Banned', `"${(u.subjects || []).join('; ')}"`, `"${u.studyStyle || 'N/A'}"`, `"${u.location || 'N/A'}"`, `"${new Date(u.createdAt).toLocaleDateString()}"`].join(','))].join('\n');
@@ -309,7 +329,9 @@ export default function AdminPanel() {
 
   const menuItems = [
     { id: 'dashboard', icon: BarChart2, label: 'Analytics', roles: ['Super Admin', 'Moderator'] },
-    { id: 'gamification', icon: Trophy, label: 'Leaderboards', roles: ['Super Admin', 'Moderator'] },
+    { id: 'squads', icon: Users, label: 'Squad Matrix', roles: ['Super Admin', 'Moderator'] },
+    { id: 'gamification', icon: Trophy, label: 'Leaderboards & Economy', roles: ['Super Admin', 'Moderator'] },
+    { id: 'engine', icon: Sliders, label: 'Platform Engine', roles: ['Super Admin'] },
     { id: 'users', icon: Users, label: 'Manage Entities', roles: ['Super Admin', 'Moderator'] },
     { id: 'institutions', icon: Building, label: 'Walled Gardens', roles: ['Super Admin'] },
     { id: 'feedback', icon: MessageSquare, label: 'Moderation Hub', roles: ['Super Admin', 'Moderator', 'Support Agent'] },
@@ -712,6 +734,93 @@ export default function AdminPanel() {
               </Box>
             )}
 
+            {/* Squads Matrix Tab */}
+            {activeTab === 'squads' && (
+              <Box component={motion.div} variants={fadeUpSpring}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+                  <Typography variant="h4" fontWeight={900}>Global Squads Matrix</Typography>
+                </Box>
+                <Grid container spacing={3}>
+                  {squads.map((squad) => (
+                    <Grid item xs={12} md={6} lg={4} key={squad._id}>
+                      <TiltCard sx={{ height: '100%', borderRadius: '24px', position: 'relative', overflow: 'hidden' }}>
+                        <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'linear-gradient(90deg, #3b82f6, #ec4899)' }} />
+                        <Box sx={{ p: 4, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                            <Box sx={{ p: 1.5, bgcolor: 'rgba(59, 130, 246, 0.1)', borderRadius: '16px' }}>
+                              <Users size={32} color="#3b82f6" />
+                            </Box>
+                            {role === 'Super Admin' && (
+                              <Button size="small" variant="contained" sx={{ bgcolor: '#ef4444', color: 'white', fontWeight: 800, borderRadius: '8px' }} onClick={() => handleDisbandSquad(squad._id)}>
+                                Force Disband
+                              </Button>
+                            )}
+                          </Box>
+                          <Typography variant="h5" fontWeight={900} sx={{ mb: 1 }}>{squad.name}</Typography>
+                          <Typography variant="body2" color="rgba(255,255,255,0.6)" mb={2} sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{squad.description}</Typography>
+                          <Typography variant="caption" color="#ec4899" fontWeight={800} sx={{ mb: 3 }}>Subject: {squad.subject}</Typography>
+                          
+                          <Grid container spacing={2} sx={{ mt: 'auto' }}>
+                            <Grid item xs={6}>
+                              <Box sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <Typography variant="caption" color="rgba(255,255,255,0.5)" fontWeight={800}>Creator</Typography>
+                                <Typography variant="body2" fontWeight={800} noWrap>{squad.creator?.name || 'Unknown'}</Typography>
+                              </Box>
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Box sx={{ p: 2, bgcolor: 'rgba(59, 130, 246, 0.1)', borderRadius: '16px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                                <Typography variant="caption" color="#60a5fa" fontWeight={800}>Members</Typography>
+                                <Typography variant="h6" color="#60a5fa" fontWeight={900}>{squad.members?.length || 0} / {squad.maxMembers}</Typography>
+                              </Box>
+                            </Grid>
+                          </Grid>
+                        </Box>
+                      </TiltCard>
+                    </Grid>
+                  ))}
+                  {squads.length === 0 && (
+                     <Grid item xs={12}>
+                       <Box sx={{ py: 10, textAlign: 'center', bgcolor: 'rgba(0,0,0,0.2)', borderRadius: '24px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                         <Users size={48} color="rgba(255,255,255,0.1)" style={{marginBottom: 16}} />
+                         <Typography variant="h6" color="rgba(255,255,255,0.5)" fontWeight={800}>No Active Squads Detected</Typography>
+                       </Box>
+                     </Grid>
+                  )}
+                </Grid>
+              </Box>
+            )}
+
+            {/* Platform Engine Tab */}
+            {activeTab === 'engine' && role === 'Super Admin' && (
+              <Box component={motion.div} variants={fadeUpSpring}>
+                <Typography variant="h4" fontWeight={900} mb={4} display="flex" alignItems="center" gap={2} ><Sliders size={32} color="#f59e0b" /> Platform Core Engine</Typography>
+                <Grid container spacing={4}>
+                  <Grid item xs={12} md={6}>
+                    <TiltCard sx={{ p: 4, height: '100%' }}>
+                      <Typography variant="h6" fontWeight={800} mb={3}>Global Feature Flags</Typography>
+                      <Box component="form" onSubmit={updateSiteConfig} sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <FormControlLabel control={<Switch checked={siteConfig.showQuickActions} onChange={e => setSiteConfig({...siteConfig, showQuickActions: e.target.checked})} color="success" />} label={<Typography fontWeight={800}>Enable Quick Actions Dashboard</Typography>} />
+                        <FormControlLabel control={<Switch checked={siteConfig.showSuggestedMatches} onChange={e => setSiteConfig({...siteConfig, showSuggestedMatches: e.target.checked})} color="success" />} label={<Typography fontWeight={800}>Enable AI Study Partner Matching</Typography>} />
+                        <FormControlLabel control={<Switch checked={siteConfig.announcementBannerActive} onChange={e => setSiteConfig({...siteConfig, announcementBannerActive: e.target.checked})} color="success" />} label={<Typography fontWeight={800}>Activate Global Announcement Banner</Typography>} />
+                        <TextField fullWidth size="small" label="Global Announcement Text" value={siteConfig.announcementBannerText} onChange={e => setSiteConfig({...siteConfig, announcementBannerText: e.target.value})} sx={{ input: { color: 'white' }, label: { color: 'rgba(255,255,255,0.5)' }, '& .MuiOutlinedInput-root': { bgcolor: 'rgba(255,255,255,0.02)', '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' } } }} disabled={!siteConfig.announcementBannerActive} />
+                        <Button type="submit" variant="contained" sx={{ mt: 2, bgcolor: '#f59e0b', color: 'black', fontWeight: 900 }} disabled={saving}>Compile & Sync Platform Rules</Button>
+                      </Box>
+                    </TiltCard>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TiltCard sx={{ p: 4, height: '100%' }}>
+                      <Typography variant="h6" fontWeight={800} mb={3}>Onboarding Matrix Config</Typography>
+                      <Box component="form" onSubmit={updateSiteConfig} sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <TextField fullWidth size="small" label="Welcome Title Template" value={siteConfig.welcomeTitle} onChange={e => setSiteConfig({...siteConfig, welcomeTitle: e.target.value})} sx={{ input: { color: 'white' }, label: { color: 'rgba(255,255,255,0.5)' }, '& .MuiOutlinedInput-root': { bgcolor: 'rgba(255,255,255,0.02)', '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' } } }} helperText="Use {name} for user's given name." FormHelperTextProps={{ sx: { color: 'rgba(255,255,255,0.4)' } }} />
+                        <TextField fullWidth size="small" multiline rows={3} label="Welcome Subtitle Template" value={siteConfig.welcomeSubtitle} onChange={e => setSiteConfig({...siteConfig, welcomeSubtitle: e.target.value})} sx={{ input: { color: 'white' }, label: { color: 'rgba(255,255,255,0.5)' }, '& .MuiOutlinedInput-root': { bgcolor: 'rgba(255,255,255,0.02)', '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' } } }} />
+                        <Button type="submit" variant="contained" sx={{ mt: 2, bgcolor: '#f59e0b', color: 'black', fontWeight: 900 }} disabled={saving}>Compile & Sync Platform Rules</Button>
+                      </Box>
+                    </TiltCard>
+                  </Grid>
+                </Grid>
+              </Box>
+            )}
+
             {/* Moderation Hub (Feedback) */}
             {activeTab === 'feedback' && (
               <Box component={motion.div} variants={fadeUpSpring}>
@@ -885,10 +994,35 @@ export default function AdminPanel() {
             {/* Gamification Hub */}
             {activeTab === 'gamification' && (
               <Box component={motion.div} variants={fadeUpSpring}>
-                <TiltCard sx={{ p: 4 }}>
-                  <Typography variant="h5" fontWeight={900} mb={3} display="flex" alignItems="center" gap={1.5} color="white"><Trophy color="#f59e0b" size={28} /> Gamification Engine</Typography>
-                  <TableContainer>
-                    <Table sx={{ '& .MuiTableCell-root': { borderColor: 'rgba(255,255,255,0.05)', color: 'white' } }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                  <Typography variant="h4" fontWeight={900} display="flex" alignItems="center" gap={2} color="white"><Trophy color="#f59e0b" size={32} /> Gamification Economy</Typography>
+                </Box>
+                <Grid container spacing={3}>
+                  <Grid item xs={12} lg={4}>
+                     <TiltCard sx={{ p: 4, mb: 3 }}>
+                       <Typography variant="h6" fontWeight={900} mb={3} display="flex" alignItems="center" gap={1.5} color="white"><Activity color="#10b981" size={24} /> Quest Injector</Typography>
+                       <form onSubmit={handleInjectQuest}>
+                         <TextField fullWidth size="small" placeholder="E.g. Study for 5 hours straight..." value={questInput} onChange={e => setQuestInput(e.target.value)} sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'rgba(255,255,255,0.05)', color: 'white' }, input: { color: 'white' } }} />
+                         <Button type="submit" variant="contained" fullWidth sx={{ mt: 2, bgcolor: '#10b981', color: 'white', fontWeight: 800 }} disabled={!questInput || saving}>Drop Quest globally to all Users</Button>
+                       </form>
+                     </TiltCard>
+                     <TiltCard sx={{ p: 3 }}>
+                       <Typography variant="subtitle1" fontWeight={800} mb={2} color="rgba(255,255,255,0.5)">Currently Active Quests</Typography>
+                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                          {quests.map(q => (
+                             <Box key={q._id} sx={{ p: 2, bgcolor: 'rgba(16, 185, 129, 0.1)', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                               <Typography variant="body2" fontWeight={800} color="#34d399">{q.task}</Typography>
+                             </Box>
+                          ))}
+                          {quests.length === 0 && <Typography variant="caption" color="rgba(255,255,255,0.3)">No active quests.</Typography>}
+                       </Box>
+                     </TiltCard>
+                  </Grid>
+                  <Grid item xs={12} lg={8}>
+                    <TiltCard sx={{ p: 4, height: '100%' }}>
+                      <Typography variant="h6" fontWeight={900} mb={3} display="flex" alignItems="center" gap={1.5} color="white"><Trophy color="#f59e0b" size={24} /> Engine Leaderboard</Typography>
+                      <TableContainer>
+                        <Table sx={{ '& .MuiTableCell-root': { borderColor: 'rgba(255,255,255,0.05)', color: 'white' } }}>
                       <TableHead>
                         <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.1)' }}>
                           <TableCell><Typography fontWeight={800} color="rgba(255,255,255,0.5)">Rank</Typography></TableCell>
@@ -917,7 +1051,9 @@ export default function AdminPanel() {
                     </Table>
                   </TableContainer>
                 </TiltCard>
-              </Box>
+              </Grid>
+             </Grid>
+            </Box>
             )}
 
             {/* Support Chat / Messages natively mounted for Super Admins / Agents */}
