@@ -111,16 +111,62 @@ function BadgeCard({ name, earned }) {
 
 /* ─── Social Accounts Grid ─── */
 const SOCIAL_PLATFORMS = [
-  { key: 'linkedin',  label: 'LinkedIn',  Icon: Linkedin,  color: '#0a66c2', bg: 'rgba(10,102,194,0.1)',   href: (v) => `https://linkedin.com/in/${v}` },
-  { key: 'github',    label: 'GitHub',    Icon: Github,    color: '#333',    bg: 'rgba(51,51,51,0.1)',     href: (v) => `https://github.com/${v}` },
-  { key: 'twitter',   label: 'X (Twitter)', Icon: Twitter, color: '#1da1f2', bg: 'rgba(29,161,242,0.1)',  href: (v) => `https://x.com/${v}` },
-  { key: 'instagram', label: 'Instagram', Icon: Instagram, color: '#e1306c', bg: 'rgba(225,48,108,0.1)',  href: (v) => `https://instagram.com/${v}` },
-  { key: 'facebook',  label: 'Facebook',  Icon: Facebook,  color: '#1877f2', bg: 'rgba(24,119,242,0.1)',  href: (v) => `https://facebook.com/${v}` },
-  { key: 'youtube',   label: 'YouTube',   Icon: Youtube,   color: '#ff0000', bg: 'rgba(255,0,0,0.1)',     href: (v) => `https://youtube.com/@${v}` },
+  { key: 'linkedin',  label: 'LinkedIn',    Icon: Linkedin,  color: '#0a66c2', bg: 'rgba(10,102,194,0.1)',   href: (v) => `https://linkedin.com/in/${v}`,   placeholder: 'e.g. reidhoffman' },
+  { key: 'github',    label: 'GitHub',      Icon: Github,    color: '#e5e7eb', bg: 'rgba(255,255,255,0.06)', href: (v) => `https://github.com/${v}`,        placeholder: 'e.g. torvalds' },
+  { key: 'twitter',   label: 'X (Twitter)', Icon: Twitter,   color: '#1da1f2', bg: 'rgba(29,161,242,0.1)',  href: (v) => `https://x.com/${v}`,             placeholder: 'e.g. elonmusk' },
+  { key: 'instagram', label: 'Instagram',   Icon: Instagram, color: '#e1306c', bg: 'rgba(225,48,108,0.1)',  href: (v) => `https://instagram.com/${v}`,     placeholder: 'e.g. zuck' },
+  { key: 'facebook',  label: 'Facebook',    Icon: Facebook,  color: '#1877f2', bg: 'rgba(24,119,242,0.1)',  href: (v) => `https://facebook.com/${v}`,      placeholder: 'e.g. zuckerberg' },
+  { key: 'youtube',   label: 'YouTube',     Icon: Youtube,   color: '#ff0000', bg: 'rgba(255,0,0,0.1)',     href: (v) => `https://youtube.com/@${v}`,      placeholder: 'e.g. mkbhd' },
 ];
 
-function SocialAccountsGrid({ socialLinks = {}, isDark }) {
-  const hasSocials = SOCIAL_PLATFORMS.some(p => socialLinks[p.key]);
+function SocialAccountsGrid({ socialLinks = {}, isDark, isSelf = false, onSave }) {
+  const [editing, setEditing]   = useState(null); // platform key being edited
+  const [inputVal, setInputVal] = useState('');
+  const [saving, setSaving]     = useState(false);
+
+  const connectedCount = SOCIAL_PLATFORMS.filter(p => socialLinks[p.key]).length;
+
+  const openEdit = (key, currentVal) => {
+    setEditing(key);
+    setInputVal(currentVal || '');
+  };
+
+  const closeEdit = () => { setEditing(null); setInputVal(''); };
+
+  const handleSave = async () => {
+    if (!editing) return;
+    setSaving(true);
+    try {
+      const updated = { ...socialLinks, [editing]: inputVal.trim().replace(/^@/, '') };
+      const { data } = await api.put('/users/profile', { socialLinks: updated });
+      onSave && onSave(data);
+      toast.success(`${SOCIAL_PLATFORMS.find(p => p.key === editing)?.label} updated!`);
+      closeEdit();
+    } catch {
+      toast.error('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    if (!editing) return;
+    setSaving(true);
+    try {
+      const updated = { ...socialLinks, [editing]: '' };
+      const { data } = await api.put('/users/profile', { socialLinks: updated });
+      onSave && onSave(data);
+      toast.success('Link removed.');
+      closeEdit();
+    } catch {
+      toast.error('Failed to remove link.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const activePlatform = SOCIAL_PLATFORMS.find(p => p.key === editing);
+
   return (
     <Box sx={{
       borderRadius: '18px', p: 3,
@@ -128,49 +174,65 @@ function SocialAccountsGrid({ socialLinks = {}, isDark }) {
       border: '1px solid', borderColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)',
       boxShadow: isDark ? '0 1px 8px rgba(0,0,0,0.3)' : '0 1px 4px rgba(0,0,0,0.05)',
     }}>
+      {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
         <Box>
           <Typography sx={{ fontFamily: 'monospace', fontSize: '0.6rem', fontWeight: 800, color: '#6366f1', letterSpacing: 2, mb: 0.5 }}>▸ SOCIAL / ACCOUNTS</Typography>
           <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: isDark ? 'white' : '#0f172a' }}>Online Presence</Typography>
         </Box>
-        {hasSocials && (
-          <Box sx={{ px: 1.25, py: 0.4, borderRadius: '8px', bgcolor: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)' }}>
-            <Typography sx={{ fontSize: '0.62rem', fontWeight: 800, color: '#22c55e', fontFamily: 'monospace' }}>
-              {SOCIAL_PLATFORMS.filter(p => socialLinks[p.key]).length} CONNECTED
-            </Typography>
-          </Box>
-        )}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {connectedCount > 0 && (
+            <Box sx={{ px: 1.25, py: 0.4, borderRadius: '8px', bgcolor: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)' }}>
+              <Typography sx={{ fontSize: '0.62rem', fontWeight: 800, color: '#22c55e', fontFamily: 'monospace' }}>
+                {connectedCount} CONNECTED
+              </Typography>
+            </Box>
+          )}
+          {isSelf && (
+            <Tooltip title="Edit social links in your profile settings" arrow>
+              <Box sx={{ px: 1.25, py: 0.4, borderRadius: '8px', bgcolor: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', cursor: 'default' }}>
+                <Typography sx={{ fontSize: '0.62rem', fontWeight: 800, color: '#818cf8', fontFamily: 'monospace' }}>CLICK TO ADD</Typography>
+              </Box>
+            </Tooltip>
+          )}
+        </Box>
       </Box>
 
+      {/* Platform grid */}
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.25 }}>
-        {SOCIAL_PLATFORMS.map(({ key, label, Icon, color, bg, href }) => {
-          const isConnected = Boolean(socialLinks[key]);
-          const url = isConnected ? href(socialLinks[key]) : null;
+        {SOCIAL_PLATFORMS.map(({ key, label, Icon, color, bg, href, placeholder }) => {
+          const val = socialLinks[key];
+          const isConnected = Boolean(val);
+          const url = isConnected ? href(val) : null;
+          const canEdit = isSelf;
+
           return (
             <Box
               key={key}
-              component={isConnected ? 'a' : 'div'}
-              href={url || undefined}
-              target={isConnected ? '_blank' : undefined}
+              component={isConnected && !canEdit ? 'a' : 'div'}
+              href={isConnected && !canEdit ? url : undefined}
+              target={isConnected && !canEdit ? '_blank' : undefined}
               rel="noopener noreferrer"
+              onClick={() => {
+                if (canEdit) { openEdit(key, val); return; }
+                if (isConnected && url) window.open(url, '_blank');
+              }}
               sx={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
-                p: 2, borderRadius: '14px', textDecoration: 'none',
+                p: 2, borderRadius: '14px', textDecoration: 'none', position: 'relative',
                 bgcolor: isConnected ? bg : (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'),
                 border: '1px solid',
                 borderColor: isConnected ? color + '33' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'),
-                opacity: isConnected ? 1 : 0.45,
-                cursor: isConnected ? 'pointer' : 'default',
-                position: 'relative',
+                cursor: (canEdit || isConnected) ? 'pointer' : 'default',
                 transition: 'all 0.2s',
-                '&:hover': isConnected ? {
+                '&:hover': (canEdit || isConnected) ? {
                   transform: 'translateY(-3px)',
                   boxShadow: `0 6px 20px ${color}22`,
                   borderColor: color + '55',
                 } : {},
               }}
             >
-              {/* Connected green dot */}
+              {/* Connected indicator */}
               {isConnected && (
                 <Box sx={{
                   position: 'absolute', top: 10, right: 10,
@@ -179,27 +241,161 @@ function SocialAccountsGrid({ socialLinks = {}, isDark }) {
                 }} />
               )}
 
+              {/* Edit "+" indicator for own unconnected profiles */}
+              {!isConnected && canEdit && (
+                <Box sx={{
+                  position: 'absolute', top: 8, right: 8,
+                  width: 18, height: 18, borderRadius: '50%',
+                  bgcolor: 'rgba(99,102,241,0.18)',
+                  border: '1px solid rgba(99,102,241,0.4)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '0.7rem', fontWeight: 900, color: '#818cf8',
+                  lineHeight: 1,
+                }}>+</Box>
+              )}
+
               <Icon
                 size={24}
-                color={isConnected
-                  ? (key === 'github' ? (isDark ? '#e5e7eb' : '#333') : color)
-                  : (isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)')}
+                color={isConnected ? color : (isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)')}
               />
               <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: isConnected ? (isDark ? 'white' : '#0f172a') : 'text.disabled', lineHeight: 1 }}>
                 {label}
               </Typography>
-              <Box component="span" sx={{ fontSize: '0.6rem', color: isConnected ? color : 'text.disabled', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
+              <Box component="span" sx={{ fontSize: '0.6rem', color: isConnected ? color : (canEdit ? '#818cf8' : 'text.disabled'), fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
                 {isConnected ? (
-                  <><ExternalLink size={9} />@{socialLinks[key].slice(0, 12)}{socialLinks[key].length > 12 ? '…' : ''}</>
-                ) : 'Not connected'}
+                  <><ExternalLink size={9} />@{val.slice(0, 12)}{val.length > 12 ? '…' : ''}</>
+                ) : canEdit ? 'Tap to add' : 'Not connected'}
               </Box>
             </Box>
           );
         })}
       </Box>
+
+      {/* Inline Edit Modal */}
+      <AnimatePresence>
+        {editing && activePlatform && (
+          <Box
+            sx={{ position: 'fixed', inset: 0, bgcolor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 2 }}
+            onClick={closeEdit}
+          >
+            <Box
+              component={motion.div}
+              initial={{ opacity: 0, scale: 0.92, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 20 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              onClick={e => e.stopPropagation()}
+              sx={{
+                width: '100%', maxWidth: 420,
+                bgcolor: isDark ? '#0d1117' : '#fff',
+                border: `1px solid ${activePlatform.color}40`,
+                borderRadius: '20px',
+                boxShadow: `0 24px 60px rgba(0,0,0,0.5), 0 0 0 1px ${activePlatform.color}20`,
+                overflow: 'hidden',
+              }}
+            >
+              {/* Modal header */}
+              <Box sx={{ px: 3, pt: 3, pb: 2, display: 'flex', alignItems: 'center', gap: 2, borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}` }}>
+                <Box sx={{ p: 1.5, borderRadius: '12px', bgcolor: activePlatform.bg, border: `1px solid ${activePlatform.color}30`, display: 'flex' }}>
+                  <activePlatform.Icon size={20} color={activePlatform.color} />
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: isDark ? 'white' : '#0f172a' }}>
+                    {socialLinks[editing] ? 'Edit' : 'Connect'} {activePlatform.label}
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
+                    Enter your {activePlatform.label} username
+                  </Typography>
+                </Box>
+                <IconButton size="small" onClick={closeEdit} sx={{ color: 'text.secondary' }}>
+                  <Box component="span" sx={{ fontSize: '1.2rem', lineHeight: 1 }}>×</Box>
+                </IconButton>
+              </Box>
+
+              {/* Input */}
+              <Box sx={{ px: 3, py: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0, borderRadius: '12px', overflow: 'hidden', border: `1.5px solid ${activePlatform.color}60`, bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', '&:focus-within': { borderColor: activePlatform.color } }}>
+                  <Box sx={{ px: 1.5, py: 1.5, bgcolor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`, display: 'flex', alignItems: 'center' }}>
+                    <Typography sx={{ fontFamily: 'monospace', fontSize: '0.85rem', color: activePlatform.color, fontWeight: 700 }}>@</Typography>
+                  </Box>
+                  <input
+                    autoFocus
+                    value={inputVal}
+                    onChange={e => setInputVal(e.target.value.replace(/^@/, ''))}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') closeEdit(); }}
+                    placeholder={activePlatform.placeholder.replace('e.g. ', '')}
+                    style={{
+                      flex: 1, border: 'none', outline: 'none', background: 'transparent',
+                      padding: '12px 14px', fontSize: '0.95rem', fontWeight: 600,
+                      color: isDark ? 'white' : '#0f172a', fontFamily: 'inherit',
+                    }}
+                  />
+                </Box>
+
+                {inputVal && (
+                  <Box sx={{ mt: 1.5, px: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <ExternalLink size={11} color="text.secondary" />
+                    <Typography sx={{ fontSize: '0.68rem', color: 'text.secondary', fontFamily: 'monospace' }}>
+                      {activePlatform.href(inputVal)}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+
+              {/* Actions */}
+              <Box sx={{ px: 3, pb: 3, display: 'flex', gap: 1.5 }}>
+                <Box
+                  component="button"
+                  onClick={handleSave}
+                  disabled={saving || !inputVal.trim()}
+                  sx={{
+                    flex: 1, py: 1.4, borderRadius: '10px', border: 'none',
+                    background: saving || !inputVal.trim()
+                      ? (isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)')
+                      : `linear-gradient(135deg, ${activePlatform.color}, ${activePlatform.color}cc)`,
+                    color: saving || !inputVal.trim() ? 'text.disabled' : 'white',
+                    fontWeight: 700, fontSize: '0.88rem', cursor: saving || !inputVal.trim() ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                    boxShadow: !saving && inputVal.trim() ? `0 4px 14px ${activePlatform.color}44` : 'none',
+                  }}
+                >
+                  {saving ? 'Saving…' : 'Save Link'}
+                </Box>
+                {socialLinks[editing] && (
+                  <Box
+                    component="button"
+                    onClick={handleRemove}
+                    disabled={saving}
+                    sx={{
+                      px: 2, py: 1.4, borderRadius: '10px', border: '1px solid rgba(239,68,68,0.3)',
+                      bgcolor: 'rgba(239,68,68,0.07)', color: '#ef4444',
+                      fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer',
+                      '&:hover': { bgcolor: 'rgba(239,68,68,0.14)' },
+                    }}
+                  >
+                    Remove
+                  </Box>
+                )}
+                <Box
+                  component="button"
+                  onClick={closeEdit}
+                  sx={{
+                    px: 2, py: 1.4, borderRadius: '10px', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                    bgcolor: 'transparent', color: 'text.secondary',
+                    fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+        )}
+      </AnimatePresence>
     </Box>
   );
 }
+
 
 /* ── Persona stat pill ── */
 function StatPill({ icon: Icon, value, label, color }) {
@@ -573,7 +769,12 @@ export default function UserProfile() {
 
             {/* Social Accounts Grid */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-              <SocialAccountsGrid socialLinks={profile.socialLinks || {}} isDark={isDark} />
+              <SocialAccountsGrid
+                socialLinks={profile.socialLinks || {}}
+                isDark={isDark}
+                isSelf={isSelf}
+                onSave={(updatedUser) => setProfile(prev => ({ ...prev, socialLinks: updatedUser.socialLinks }))}
+              />
             </motion.div>
           </Box>
 

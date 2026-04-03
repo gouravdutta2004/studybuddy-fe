@@ -18,7 +18,7 @@ export default function EditProfile({ userId, onComplete }) {
   const navigate = useNavigate();
   const { id: paramId } = useParams();
   const id = paramId || userId;
-  const [form, setForm] = useState({ name: '', email: '', bio: '', avatar: '', university: '', location: '', educationLevel: 'Undergraduate', studyStyle: 'Mixed', preferOnline: true, subjects: [], availability: [], isAdmin: false, isActive: true, password: '', socialLinks: { github: '', linkedin: '', instagram: '' }, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', weeklyGoals: [] });
+  const [form, setForm] = useState({ name: '', email: '', bio: '', avatar: '', university: '', location: '', educationLevel: 'Undergraduate', studyStyle: 'Mixed', preferOnline: true, subjects: [], availability: [], isAdmin: false, isActive: true, password: '', socialLinks: { github: '', linkedin: '', instagram: '', twitter: '', facebook: '', youtube: '' }, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', weeklyGoals: [] });
   const [subjectInput, setSubjectInput] = useState('');
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
@@ -55,7 +55,7 @@ export default function EditProfile({ userId, onComplete }) {
             university: u.university || '', location: u.location || '', educationLevel: u.educationLevel || 'Undergraduate', 
             studyStyle: u.studyStyle || 'Mixed', preferOnline: u.preferOnline ?? true, subjects: u.subjects || [], 
             availability: u.availability || [], isAdmin: u.isAdmin || false, isActive: u.isActive !== undefined ? u.isActive : true, password: '',
-            socialLinks: u.socialLinks || { github: '', linkedin: '', instagram: '' }, timezone: u.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', weeklyGoals: u.weeklyGoals || []
+            socialLinks: u.socialLinks || { github: '', linkedin: '', instagram: '', twitter: '', facebook: '', youtube: '' }, timezone: u.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', weeklyGoals: u.weeklyGoals || []
           });
         })
         .catch(() => { toast.error('Failed to load user profile'); navigate('/dashboard'); });
@@ -257,21 +257,54 @@ export default function EditProfile({ userId, onComplete }) {
         </Paper>
 
         <Paper variant="outlined" sx={{ p: 3, borderRadius: 3 }}>
-          <Typography variant="h6" fontWeight={700} mb={3}>Social Vault & Verification</Typography>
+          <Typography variant="h6" fontWeight={700} mb={0.5}>Social Vault & Verification</Typography>
+          <Typography variant="body2" color="text.secondary" mb={3}>
+            Connect any 2+ platforms to earn the <b>Verified Badge</b> on your profile.
+          </Typography>
           <Grid container spacing={3}>
             <Grid item xs={12} sm={4}>
-              <TextField fullWidth label="GitHub Username" placeholder="e.g. torvalds" value={form.socialLinks?.github || ''} onChange={e => setForm({ ...form, socialLinks: { ...form.socialLinks, github: e.target.value }})} variant="outlined" size="small" />
+              <TextField fullWidth label="GitHub Username" placeholder="e.g. torvalds"
+                InputProps={{ startAdornment: <Box component="span" sx={{ mr: 0.5, fontSize: '0.8rem', color: 'text.secondary' }}>@</Box> }}
+                value={form.socialLinks?.github || ''}
+                onChange={e => setForm({ ...form, socialLinks: { ...form.socialLinks, github: e.target.value.replace('@','') }})}
+                variant="outlined" size="small" />
             </Grid>
             <Grid item xs={12} sm={4}>
-              <TextField fullWidth label="LinkedIn Username" placeholder="e.g. reidhoffman" value={form.socialLinks?.linkedin || ''} onChange={e => setForm({ ...form, socialLinks: { ...form.socialLinks, linkedin: e.target.value }})} variant="outlined" size="small" />
+              <TextField fullWidth label="LinkedIn Username" placeholder="e.g. reidhoffman"
+                InputProps={{ startAdornment: <Box component="span" sx={{ mr: 0.5, fontSize: '0.8rem', color: 'text.secondary' }}>@</Box> }}
+                value={form.socialLinks?.linkedin || ''}
+                onChange={e => setForm({ ...form, socialLinks: { ...form.socialLinks, linkedin: e.target.value.replace('@','') }})}
+                variant="outlined" size="small" />
             </Grid>
             <Grid item xs={12} sm={4}>
-              <TextField fullWidth label="Instagram Username" placeholder="e.g. zuck" value={form.socialLinks?.instagram || ''} onChange={e => setForm({ ...form, socialLinks: { ...form.socialLinks, instagram: e.target.value }})} variant="outlined" size="small" />
+              <TextField fullWidth label="Instagram Username" placeholder="e.g. zuck"
+                InputProps={{ startAdornment: <Box component="span" sx={{ mr: 0.5, fontSize: '0.8rem', color: 'text.secondary' }}>@</Box> }}
+                value={form.socialLinks?.instagram || ''}
+                onChange={e => setForm({ ...form, socialLinks: { ...form.socialLinks, instagram: e.target.value.replace('@','') }})}
+                variant="outlined" size="small" />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField fullWidth label="X / Twitter Username" placeholder="e.g. elonmusk"
+                InputProps={{ startAdornment: <Box component="span" sx={{ mr: 0.5, fontSize: '0.8rem', color: 'text.secondary' }}>@</Box> }}
+                value={form.socialLinks?.twitter || ''}
+                onChange={e => setForm({ ...form, socialLinks: { ...form.socialLinks, twitter: e.target.value.replace('@','') }})}
+                variant="outlined" size="small" />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField fullWidth label="Facebook Username / Page" placeholder="e.g. zuckerberg"
+                InputProps={{ startAdornment: <Box component="span" sx={{ mr: 0.5, fontSize: '0.8rem', color: 'text.secondary' }}>@</Box> }}
+                value={form.socialLinks?.facebook || ''}
+                onChange={e => setForm({ ...form, socialLinks: { ...form.socialLinks, facebook: e.target.value.replace('@','') }})}
+                variant="outlined" size="small" />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField fullWidth label="YouTube Handle" placeholder="e.g. mkbhd"
+                InputProps={{ startAdornment: <Box component="span" sx={{ mr: 0.5, fontSize: '0.8rem', color: 'text.secondary' }}>@</Box> }}
+                value={form.socialLinks?.youtube || ''}
+                onChange={e => setForm({ ...form, socialLinks: { ...form.socialLinks, youtube: e.target.value.replace('@','') }})}
+                variant="outlined" size="small" />
             </Grid>
           </Grid>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-            Link at least two authentic social accounts to receive the global <b>Verified Badge</b> on your profile (server recalculates automatically).
-          </Typography>
         </Paper>
 
 
