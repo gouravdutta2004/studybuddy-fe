@@ -32,7 +32,9 @@ export default function FloatingBackground() {
           height: '500px',
           filter: 'blur(100px)',
           backgroundColor: 'rgba(16, 185, 129, 0.15)',
-          borderRadius: '50%'
+          borderRadius: '50%',
+          willChange: 'transform, filter',
+          transform: 'translateZ(0)',
         }}
       />
       
@@ -57,7 +59,9 @@ export default function FloatingBackground() {
           height: '600px',
           filter: 'blur(120px)',
           backgroundColor: 'rgba(99, 102, 241, 0.15)',
-          borderRadius: '50%'
+          borderRadius: '50%',
+          willChange: 'transform, filter',
+          transform: 'translateZ(0)',
         }}
       />
 
@@ -81,7 +85,9 @@ export default function FloatingBackground() {
           height: '400px',
           filter: 'blur(150px)',
           backgroundColor: 'rgba(244, 63, 94, 0.1)',
-          borderRadius: '50%'
+          borderRadius: '50%',
+          willChange: 'transform, filter',
+          transform: 'translateZ(0)',
         }}
       />
     </Box>
