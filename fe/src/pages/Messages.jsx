@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   Send, MessageSquare, ArrowLeft, Search, CheckCheck, Check,
   Paperclip, Reply, X, MoreHorizontal, Phone, Video, Info,
-  SmilePlus, Circle
+  SmilePlus, Circle, Handshake
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ReactMarkdown from 'react-markdown';
@@ -13,7 +13,7 @@ import { format, isToday, isYesterday } from 'date-fns';
 import io from 'socket.io-client';
 import {
   Box, Typography, Button, IconButton, TextField, Avatar,
-  useTheme, useMediaQuery, InputAdornment, Tooltip
+  useTheme, useMediaQuery, InputAdornment, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -53,6 +53,10 @@ export default function Messages() {
   const [searchFilter, setSearchFilter] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState(new Set());
+
+  const [contractModal, setContractModal] = useState(false);
+  const [contractDate, setContractDate] = useState('');
+  const [contractStakes, setContractStakes] = useState(500);
 
   const messagesEndRef = useRef(null);
   const socketRef = useRef(null);
@@ -135,7 +139,28 @@ export default function Messages() {
       setNewMsg('');
       setReplyTo(null);
       loadInboxQuietly();
-    } catch { toast.error('Failed to send'); } finally { setSending(false); }
+      toast.error('Failed to send'); 
+    } finally { setSending(false); }
+  };
+
+  const handleProposeContract = async () => {
+    if (!contractDate) return toast.error('Please select a time');
+    try {
+      await api.post('/contracts/propose', {
+        targetUserId: activeUser._id,
+        scheduledTime: contractDate,
+        stakes: Number(contractStakes)
+      });
+      toast.success('Contract proposed!');
+      setContractModal(false);
+      // Auto-send a message
+      const msg = `> *🤝 Accountability Contract Proposed*\n\nCommit to study at ${formatMsgDate(contractDate)}. Stake: **${contractStakes} XP**. No-shows lose their XP and take a hit to their Consistency Score. Let's lock in!`;
+      await api.post('/messages', { receiverId: activeUser._id, content: msg });
+      loadInboxQuietly();
+      fetchConversation(activeUser._id);
+    } catch(err) {
+      toast.error(err.response?.data?.message || 'Failed to propose contract');
+    }
   };
 
   const handleFileUpload = async (e) => {
@@ -176,6 +201,25 @@ export default function Messages() {
   const theirBubble = isDark ? '#1e293b' : '#ffffff';
 
   return (
+    <>
+    <Dialog open={contractModal} onClose={() => setContractModal(false)}
+      PaperProps={{ style: { backgroundColor: bg, color: isDark ? 'white' : 'black', borderRadius: 16 } }}>
+      <DialogTitle sx={{ fontWeight: 800 }}>🤝 Propose Study Contract</DialogTitle>
+      <DialogContent>
+          <Typography fontSize="0.85rem" mb={2} color="text.secondary">
+            Commit to a study session. If you no-show, you lose the staked XP and take a hit to your Consistency Score. Prove your dedication.
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField fullWidth type="datetime-local" size="small" value={contractDate} onChange={e => setContractDate(e.target.value)} sx={{ input: { color: isDark ? 'white' : 'inherit' } }} />
+            <TextField fullWidth type="number" label="XP Stakes" size="small" value={contractStakes} onChange={e => setContractStakes(e.target.value)} sx={{ input: { color: isDark ? 'white' : 'inherit' } }} />
+          </Box>
+      </DialogContent>
+      <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setContractModal(false)} color="inherit" sx={{ fontWeight: 700 }}>Cancel</Button>
+          <Button onClick={handleProposeContract} variant="contained" sx={{ bgcolor: '#6366f1', fontWeight: 800 }}>Propose stakes</Button>
+      </DialogActions>
+    </Dialog>
+
     <Box sx={{
       height: '100%',
       display: 'flex', alignItems: 'stretch', justifyContent: 'center',
@@ -368,6 +412,11 @@ export default function Messages() {
 
                 {/* Actions */}
                 <Box sx={{ display: 'flex', gap: 0.5 }}>
+                  <Tooltip title="Propose Contract">
+                    <IconButton onClick={() => setContractModal(true)} size="small" sx={{ color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)', '&:hover': { color: '#6366f1', bgcolor: 'rgba(99,102,241,0.08)' }, borderRadius: '8px' }}>
+                      <Handshake size={17} />
+                    </IconButton>
+                  </Tooltip>
                   <Tooltip title="Voice Call">
                     <IconButton size="small" sx={{ color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)', '&:hover': { color: '#6366f1', bgcolor: 'rgba(99,102,241,0.08)' }, borderRadius: '8px' }}>
                       <Phone size={17} />
@@ -640,5 +689,6 @@ export default function Messages() {
         </Box>
       </Box>
     </Box>
+    </>
   );
 }

@@ -1,4 +1,8 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
 
 const features = [
   {
@@ -67,13 +71,48 @@ const features = [
 ];
 
 export default function CoreFeatures() {
+  const [activeCardIndex, setActiveCardIndex] = useState(null);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    let ctx = gsap.context(() => {
+      const cards = gsap.utils.toArray('.cf-card');
+      
+      // Wipe/Scale stagger from Cx / Ax reference
+      gsap.fromTo(cards, 
+        { y: 80, opacity: 0, scale: 0.9 },
+        { 
+          y: 0, opacity: 1, scale: 1, 
+          duration: 1.2, 
+          stagger: 0.15, 
+          ease: "expo.out",
+          scrollTrigger: {
+            trigger: containerRef.current,
+            start: "top 85%",
+          }
+        }
+      );
+    }, containerRef);
+    return () => ctx.revert();
+  }, []);
+
+  const handleScrollUp = (e) => {
+    e.stopPropagation();
+    setActiveCardIndex(null);
+    const target = document.getElementById('top');
+    if (target) {
+      gsap.to(window, { duration: 1, scrollTo: 0, ease: 'power3.inOut' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   return (
-    <section id="features" style={{ padding: '5.5rem 0', position: 'relative', zIndex: 10 }}>
+    <section ref={containerRef} id="features" style={{ padding: '5.5rem 0', position: 'relative', zIndex: 10, cursor: 'none' }}>
       <style>{`
         .cf-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.25rem; max-width: 1000px; margin: 0 auto; }
-        .cf-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 1.5rem; padding: 2.25rem 1.75rem; text-align: center; transition: .3s cubic-bezier(0.4,0,0.2,1); position: relative; overflow: hidden; cursor: default; }
-        .cf-card::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(124,58,237,0.06),rgba(16,185,129,0.03)); opacity:0; transition:.3s; }
-        .cf-card:hover { border-color: rgba(124,58,237,0.25); transform: translateY(-7px); box-shadow: 0 16px 40px rgba(0,0,0,0.3), 0 0 60px rgba(124,58,237,0.2); }
+        .cf-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 1.5rem; padding: 2.25rem 1.75rem; text-align: center; transition: .3s cubic-bezier(0.4,0,0.2,1); position: relative; overflow: hidden; cursor: none; will-change: transform, opacity; }
+        .cf-card::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(124,58,237,0.06),rgba(16,185,129,0.03)); opacity:0; transition:.3s; cursor: none; }
+        .cf-card:hover { border-color: rgba(124,58,237,0.25); transform: translateY(-7px) !important; box-shadow: 0 16px 40px rgba(0,0,0,0.3), 0 0 60px rgba(124,58,237,0.2); }
         .cf-card:hover::before { opacity: 1; }
         .cf-card:hover .cf-icon { transform: scale(1.1); }
         .cf-icon { width:68px; height:68px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem; transition:.3s; position:relative; z-index:1; }
@@ -92,12 +131,54 @@ export default function CoreFeatures() {
         </div>
         <div className="cf-grid">
           {features.map((f, i) => (
-            <div className="cf-card" key={i}>
+            <div 
+              className="cf-card" 
+              key={i} 
+              onClick={() => setActiveCardIndex(i)}
+            >
               <div className="cf-icon" style={{ background: f.bg, boxShadow: `0 0 28px ${f.color}33` }}>
                 {f.icon}
               </div>
               <div className="cf-name">{f.name}</div>
               <p className="cf-desc">{f.desc}</p>
+
+              {/* CHANGE Button Overlay */}
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'rgba(0,0,0,0.6)',
+                backdropFilter: 'blur(4px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: activeCardIndex === i ? 1 : 0,
+                pointerEvents: activeCardIndex === i ? 'auto' : 'none',
+                transition: 'opacity 0.3s ease',
+                zIndex: 10,
+                cursor: 'none'
+              }}>
+                <button 
+                  onClick={handleScrollUp}
+                  style={{
+                    width: '100px',
+                    height: '100px',
+                    borderRadius: '50%',
+                    background: '#141414',
+                    border: `2px solid ${f.color}`,
+                    color: '#fff',
+                    fontFamily: 'Space Grotesk, sans-serif',
+                    fontWeight: 800,
+                    fontSize: '1.1rem',
+                    letterSpacing: '1px',
+                    cursor: 'none',
+                    transform: activeCardIndex === i ? 'scale(1)' : 'scale(0)',
+                    transition: 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+                    boxShadow: `0 10px 30px ${f.color}66`
+                  }}
+                >
+                  CHANGE
+                </button>
+              </div>
             </div>
           ))}
         </div>

@@ -162,6 +162,15 @@ export default function AdminPanel() {
   const [cmdQuery, setCmdQuery] = useState('');
   const [now, setNow] = useState(new Date());
 
+  // ── Billing Pricing Control ──
+  const DEFAULT_PRICING_CONFIG = {
+    pro:   { basePrice: 799,  discount: 0, annualDiscount: 20 },
+    squad: { basePrice: 1599, discount: 0, annualDiscount: 20 },
+  };
+  const [pricingConfig, setPricingConfig] = useState(DEFAULT_PRICING_CONFIG);
+  const [pricingSaving, setPricingSaving] = useState(false);
+  const [pricingLoaded, setPricingLoaded] = useState(false);
+
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30000);
     return () => clearInterval(t);
@@ -190,6 +199,51 @@ export default function AdminPanel() {
     { id: 'communication', label: 'Go to Communications', shortcut: 'G B', icon: Mail },
   ];
   const filteredCmds = cmdQuery ? ALL_CMDS.filter(c => c.label.toLowerCase().includes(cmdQuery.toLowerCase())) : ALL_CMDS;
+
+  // Fetch billing pricing config when engine tab is opened
+  const fetchPricingConfig = useCallback(async () => {
+    try {
+      const { data } = await api.get('/billing/pricing/admin');
+      setPricingConfig({
+        pro:   { basePrice: data.pro?.basePrice   || 799,  discount: data.pro?.discount   || 0, annualDiscount: data.pro?.annualDiscount   ?? 20 },
+        squad: { basePrice: data.squad?.basePrice || 1599, discount: data.squad?.discount || 0, annualDiscount: data.squad?.annualDiscount ?? 20 },
+      });
+      setPricingLoaded(true);
+    } catch {
+      setPricingLoaded(true);
+    }
+  }, []);
+
+  const handleSavePricing = async (e) => {
+    e.preventDefault();
+    setPricingSaving(true);
+    try {
+      await api.put('/billing/pricing/admin', pricingConfig);
+      toast.success('💰 Pricing updated globally! Billing & Landing pages now reflect the new prices.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update pricing');
+    } finally { setPricingSaving(false); }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'engine' && !pricingLoaded) {
+      fetchPricingConfig();
+    }
+  }, [activeTab, pricingLoaded, fetchPricingConfig]);
+
+  const effectivePrice = (plan) => {
+    const base = Number(pricingConfig[plan]?.basePrice) || 0;
+    const disc = Math.min(Math.max(Number(pricingConfig[plan]?.discount) || 0, 0), 100);
+    return Math.round(base * (1 - disc / 100));
+  };
+
+  const annualEffectivePrice = (plan) => {
+    const monthly = effectivePrice(plan);
+    const annDisc = Math.min(Math.max(Number(pricingConfig[plan]?.annualDiscount) || 0, 0), 100);
+    return Math.round(monthly * (1 - annDisc / 100)); // per-month displayed for annual
+  };
+
+  const annualTotal = (plan) => annualEffectivePrice(plan) * 12;
 
   const fetchData = async () => {
     setLoading(true);
@@ -1046,6 +1100,230 @@ export default function AdminPanel() {
                         <TextField fullWidth size="small" label="Welcome Title Template" value={siteConfig.welcomeTitle} onChange={e => setSiteConfig({...siteConfig, welcomeTitle: e.target.value})} sx={{ input: { color: 'white' }, label: { color: 'rgba(255,255,255,0.5)' }, '& .MuiOutlinedInput-root': { bgcolor: 'rgba(255,255,255,0.02)', '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' } } }} helperText="Use {name} for user's given name." FormHelperTextProps={{ sx: { color: 'rgba(255,255,255,0.4)' } }} />
                         <TextField fullWidth size="small" multiline rows={3} label="Welcome Subtitle Template" value={siteConfig.welcomeSubtitle} onChange={e => setSiteConfig({...siteConfig, welcomeSubtitle: e.target.value})} sx={{ input: { color: 'white' }, label: { color: 'rgba(255,255,255,0.5)' }, '& .MuiOutlinedInput-root': { bgcolor: 'rgba(255,255,255,0.02)', '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' } } }} />
                         <Button type="submit" variant="contained" sx={{ mt: 2, bgcolor: '#f59e0b', color: 'black', fontWeight: 900 }} disabled={saving}>Compile & Sync Platform Rules</Button>
+                      </Box>
+                    </TiltCard>
+                  </Grid>
+
+                  {/* ─── Billing Price Control ─── */}
+                  <Grid item xs={12}>
+                    <TiltCard sx={{ p: 4 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Box sx={{ p: 1, bgcolor: 'rgba(99,102,241,0.15)', borderRadius: '10px', border: '1px solid rgba(99,102,241,0.3)' }}>
+                            <Zap size={20} color={C.indigo} />
+                          </Box>
+                          <Box>
+                            <Typography variant="h6" fontWeight={900} color="white">Billing Price Control</Typography>
+                            <Typography variant="caption" color={C.muted}>Changes propagate instantly to Billing page, Landing page, and Razorpay orders.</Typography>
+                          </Box>
+                        </Box>
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                          {['pro','squad'].map(plan => (
+                            <Box key={plan} sx={{ px: 2, py: 0.75, borderRadius: '10px', bgcolor: `${C.indigo}12`, border: `1px solid ${C.indigo}25`, textAlign: 'center', minWidth: 130 }}>
+                              <Typography sx={{ fontFamily: C.mono, fontSize: '0.55rem', color: C.muted, textTransform: 'uppercase', letterSpacing: 1 }}>{plan} monthly</Typography>
+                              <Typography sx={{ fontFamily: C.mono, fontSize: '1rem', fontWeight: 800, color: pricingConfig[plan]?.discount > 0 ? '#10b981' : 'white' }}>
+                                ₹{effectivePrice(plan).toLocaleString('en-IN')}
+                              </Typography>
+                              <Typography sx={{ fontFamily: C.mono, fontSize: '0.55rem', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: 1, mt: 0.5 }}>{plan} annual/mo</Typography>
+                              <Typography sx={{ fontFamily: C.mono, fontSize: '0.9rem', fontWeight: 800, color: '#a78bfa' }}>
+                                ₹{annualEffectivePrice(plan).toLocaleString('en-IN')}
+                              </Typography>
+                              {pricingConfig[plan]?.annualDiscount > 0 && (
+                                <Typography sx={{ fontFamily: C.mono, fontSize: '0.55rem', color: '#a78bfa', fontWeight: 700 }}>
+                                  {pricingConfig[plan].annualDiscount}% annual saving
+                                </Typography>
+                              )}
+                            </Box>
+                          ))}
+                        </Box>
+                      </Box>
+
+                      <Box component="form" onSubmit={handleSavePricing}>
+                        <Grid container spacing={3}>
+                          {['pro','squad'].map((plan) => (
+                            <Grid item xs={12} md={6} key={plan}>
+                              <Box sx={{
+                                p: 3, borderRadius: '14px',
+                                border: `1px solid ${plan === 'pro' ? C.indigo : C.green}30`,
+                                bgcolor: `${plan === 'pro' ? C.indigo : C.green}08`,
+                              }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
+                                  <Box sx={{ p: 0.8, bgcolor: `${plan === 'pro' ? C.indigo : C.green}20`, borderRadius: '8px' }}>
+                                    {plan === 'pro' ? <Zap size={16} color={C.indigo} /> : <Users size={16} color={C.green} />}
+                                  </Box>
+                                  <Typography sx={{ fontFamily: C.mono, fontWeight: 800, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: 1, color: plan === 'pro' ? C.indigo : C.green }}>
+                                    {plan === 'pro' ? 'Pro Plan' : 'Squad / Team Plan'}
+                                  </Typography>
+                                </Box>
+
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                                  <Box>
+                                    <Typography sx={{ fontFamily: C.mono, fontSize: '0.68rem', color: C.muted, textTransform: 'uppercase', letterSpacing: 0.8, mb: 0.75 }}>Base Price (₹/month)</Typography>
+                                    <TextField
+                                      type="number"
+                                      fullWidth
+                                      size="small"
+                                      inputProps={{ min: 1, step: 1 }}
+                                      value={pricingConfig[plan]?.basePrice || ''}
+                                      onChange={e => setPricingConfig(prev => ({ ...prev, [plan]: { ...prev[plan], basePrice: e.target.value } }))}
+                                      sx={{
+                                        '& .MuiOutlinedInput-root': {
+                                          bgcolor: 'rgba(255,255,255,0.04)', color: 'white', fontFamily: C.mono, fontWeight: 700, fontSize: '1.05rem',
+                                          '& fieldset': { borderColor: `${plan === 'pro' ? C.indigo : C.green}30` },
+                                          '&:hover fieldset': { borderColor: `${plan === 'pro' ? C.indigo : C.green}60` },
+                                          '&.Mui-focused fieldset': { borderColor: plan === 'pro' ? C.indigo : C.green },
+                                        },
+                                        '& input': { color: 'white', fontFamily: C.mono, fontWeight: 700 },
+                                        '& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button': { WebkitAppearance: 'none' },
+                                      }}
+                                      InputProps={{
+                                        startAdornment: <Box sx={{ mr: 0.5, fontFamily: C.mono, fontSize: '1rem', color: plan === 'pro' ? C.indigo : C.green, fontWeight: 800 }}>₹</Box>
+                                      }}
+                                    />
+                                  </Box>
+
+                                  <Box>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
+                                      <Typography sx={{ fontFamily: C.mono, fontSize: '0.68rem', color: C.muted, textTransform: 'uppercase', letterSpacing: 0.8 }}>Discount (%)</Typography>
+                                      <Typography sx={{ fontFamily: C.mono, fontSize: '0.68rem', color: pricingConfig[plan]?.discount > 0 ? '#10b981' : C.muted, fontWeight: 700 }}>
+                                        {pricingConfig[plan]?.discount > 0 ? `₹${pricingConfig[plan].basePrice - effectivePrice(plan)} saved` : 'No discount'}
+                                      </Typography>
+                                    </Box>
+                                    <TextField
+                                      type="number"
+                                      fullWidth
+                                      size="small"
+                                      inputProps={{ min: 0, max: 100, step: 1 }}
+                                      value={pricingConfig[plan]?.discount || 0}
+                                      onChange={e => setPricingConfig(prev => ({ ...prev, [plan]: { ...prev[plan], discount: Number(e.target.value) } }))}
+                                      sx={{
+                                        '& .MuiOutlinedInput-root': {
+                                          bgcolor: 'rgba(255,255,255,0.04)', color: 'white', fontFamily: C.mono,
+                                          '& fieldset': { borderColor: `${plan === 'pro' ? C.indigo : C.green}30` },
+                                          '&:hover fieldset': { borderColor: `${plan === 'pro' ? C.indigo : C.green}60` },
+                                          '&.Mui-focused fieldset': { borderColor: plan === 'pro' ? C.indigo : C.green },
+                                        },
+                                        '& input': { color: 'white', fontFamily: C.mono },
+                                        '& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button': { WebkitAppearance: 'none' },
+                                      }}
+                                      InputProps={{
+                                        endAdornment: <Box sx={{ ml: 0.5, fontFamily: C.mono, fontSize: '0.9rem', color: C.muted, fontWeight: 700 }}>%</Box>
+                                      }}
+                                    />
+                                    {/* Visual discount slider */}
+                                    <Box sx={{ mt: 1.5, height: 4, borderRadius: 4, bgcolor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                                      <Box sx={{
+                                        height: '100%', borderRadius: 4,
+                                        width: `${Math.min(Number(pricingConfig[plan]?.discount) || 0, 100)}%`,
+                                        bgcolor: pricingConfig[plan]?.discount > 0 ? '#10b981' : 'transparent',
+                                        transition: 'width 0.3s, background 0.2s',
+                                        background: pricingConfig[plan]?.discount > 0 ? `linear-gradient(90deg, ${plan === 'pro' ? C.indigo : C.green}, #10b981)` : 'transparent',
+                                      }} />
+                                    </Box>
+                                  </Box>
+
+                                  {/* Annual Discount */}
+                                  <Box>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
+                                      <Typography sx={{ fontFamily: C.mono, fontSize: '0.68rem', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: 0.8 }}>📅 Annual Discount (%)</Typography>
+                                      <Typography sx={{ fontFamily: C.mono, fontSize: '0.68rem', color: pricingConfig[plan]?.annualDiscount > 0 ? '#a78bfa' : C.muted, fontWeight: 700 }}>
+                                        {pricingConfig[plan]?.annualDiscount > 0 ? `₹${annualEffectivePrice(plan).toLocaleString('en-IN')}/mo · ₹${annualTotal(plan).toLocaleString('en-IN')}/yr` : 'No annual discount'}
+                                      </Typography>
+                                    </Box>
+                                    <TextField
+                                      type="number"
+                                      fullWidth
+                                      size="small"
+                                      inputProps={{ min: 0, max: 100, step: 1 }}
+                                      value={pricingConfig[plan]?.annualDiscount ?? 0}
+                                      onChange={e => setPricingConfig(prev => ({ ...prev, [plan]: { ...prev[plan], annualDiscount: Number(e.target.value) } }))}
+                                      sx={{
+                                        '& .MuiOutlinedInput-root': {
+                                          bgcolor: 'rgba(167,139,250,0.05)', color: 'white', fontFamily: C.mono,
+                                          '& fieldset': { borderColor: 'rgba(167,139,250,0.25)' },
+                                          '&:hover fieldset': { borderColor: 'rgba(167,139,250,0.5)' },
+                                          '&.Mui-focused fieldset': { borderColor: '#a78bfa' },
+                                        },
+                                        '& input': { color: 'white', fontFamily: C.mono },
+                                        '& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button': { WebkitAppearance: 'none' },
+                                      }}
+                                      InputProps={{ endAdornment: <Box sx={{ ml: 0.5, fontFamily: C.mono, fontSize: '0.9rem', color: '#a78bfa', fontWeight: 700 }}>%</Box> }}
+                                    />
+                                    <Box sx={{ mt: 1.5, height: 4, borderRadius: 4, bgcolor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                                      <Box sx={{
+                                        height: '100%', borderRadius: 4,
+                                        width: `${Math.min(Number(pricingConfig[plan]?.annualDiscount) || 0, 100)}%`,
+                                        transition: 'width 0.3s',
+                                        background: pricingConfig[plan]?.annualDiscount > 0 ? 'linear-gradient(90deg, #7c3aed, #a78bfa)' : 'transparent',
+                                      }} />
+                                    </Box>
+                                  </Box>
+
+                                  {/* Live price preview */}
+                                  <Box sx={{ p: 1.5, borderRadius: '10px', bgcolor: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                      <Typography sx={{ fontFamily: C.mono, fontSize: '0.65rem', color: C.muted }}>Monthly effective</Typography>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        {pricingConfig[plan]?.discount > 0 && (
+                                          <Typography sx={{ fontFamily: C.mono, fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', textDecoration: 'line-through' }}>
+                                            ₹{Number(pricingConfig[plan]?.basePrice || 0).toLocaleString('en-IN')}
+                                          </Typography>
+                                        )}
+                                        <Typography sx={{ fontFamily: C.mono, fontSize: '0.9rem', fontWeight: 800, color: pricingConfig[plan]?.discount > 0 ? '#10b981' : 'white' }}>
+                                          ₹{effectivePrice(plan).toLocaleString('en-IN')}
+                                        </Typography>
+                                      </Box>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <Typography sx={{ fontFamily: C.mono, fontSize: '0.65rem', color: '#a78bfa' }}>Annual (per month)</Typography>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        {pricingConfig[plan]?.annualDiscount > 0 && (
+                                          <Typography sx={{ fontFamily: C.mono, fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', textDecoration: 'line-through' }}>
+                                            ₹{effectivePrice(plan).toLocaleString('en-IN')}
+                                          </Typography>
+                                        )}
+                                        <Typography sx={{ fontFamily: C.mono, fontSize: '0.9rem', fontWeight: 800, color: '#a78bfa' }}>
+                                          ₹{annualEffectivePrice(plan).toLocaleString('en-IN')}
+                                        </Typography>
+                                      </Box>
+                                    </Box>
+                                    <Typography sx={{ fontFamily: C.mono, fontSize: '0.6rem', color: C.muted, mt: 0.5, textAlign: 'right' }}>
+                                      Total billed annually: ₹{annualTotal(plan).toLocaleString('en-IN')}
+                                    </Typography>
+                                  </Box>
+                                </Box>
+                              </Box>
+                            </Grid>
+                          ))}
+                        </Grid>
+
+                        <Box sx={{ mt: 3, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <Button
+                            type="submit"
+                            variant="contained"
+                            disabled={pricingSaving}
+                            startIcon={<Zap size={16} />}
+                            sx={{
+                              bgcolor: C.indigo, fontWeight: 900, fontFamily: C.mono, fontSize: '0.82rem',
+                              borderRadius: '10px', px: 3, py: 1.2, textTransform: 'none',
+                              boxShadow: `0 4px 16px ${C.indigo}40`,
+                              '&:hover': { bgcolor: '#4f46e5', boxShadow: `0 8px 24px ${C.indigo}60` },
+                            }}
+                          >
+                            {pricingSaving ? 'Pushing to Global Ledger...' : 'Publish Prices Globally'}
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            onClick={fetchPricingConfig}
+                            disabled={pricingSaving}
+                            sx={{ borderColor: C.border, color: C.muted, fontFamily: C.mono, fontSize: '0.75rem', borderRadius: '10px', textTransform: 'none', '&:hover': { borderColor: C.indigo, color: 'white' } }}
+                          >
+                            Reload from DB
+                          </Button>
+                          <Typography sx={{ fontFamily: C.mono, fontSize: '0.65rem', color: C.muted, ml: 'auto' }}>
+                            ⚡ Changes apply immediately to Billing, Landing & Razorpay
+                          </Typography>
+                        </Box>
                       </Box>
                     </TiltCard>
                   </Grid>

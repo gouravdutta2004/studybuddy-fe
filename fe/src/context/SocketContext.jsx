@@ -53,6 +53,37 @@ export const SocketProvider = ({ children }) => {
             });
         });
 
+        // SOS Beacon System
+        newSocket.on('incoming_sos', (payload) => {
+            toast((t) => (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ fontWeight: 900, fontSize: '1.1rem', color: '#ef4444' }}>🚨 SOS Beacon: {payload.subject}</div>
+                    <div style={{ fontSize: '0.85rem' }}><b>{payload.userName}</b> is stuck on: <i>{payload.topic}</i></div>
+                    <button 
+                        onClick={() => {
+                            newSocket.emit('accept_sos', { callerId: payload.userId, helperName: user.name });
+                            toast.dismiss(t.id);
+                        }}
+                        style={{ background: '#ef4444', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 800, marginTop: '4px' }}
+                    >
+                        Accept & Help
+                    </button>
+                </div>
+            ), {
+                duration: 15000,
+                style: { border: '2px solid #ef4444', backgroundColor: '#fff0f0' } // simple fallback inline styling
+            });
+        });
+
+        newSocket.on('sos_accepted', ({ roomId, helperName }) => {
+            toast.success(`${helperName || 'An expert'} accepted your SOS! Routing...`, {
+                duration: 4000, icon: '🚀'
+            });
+            setTimeout(() => {
+                window.location.href = `/live?room=${roomId}`;
+            }, 1500);
+        });
+
         return () => {
             newSocket.off('notification');
             newSocket.off('message_received');

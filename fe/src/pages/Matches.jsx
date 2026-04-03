@@ -109,10 +109,20 @@ export default function Matches() {
         {matches.length === 0 && (
           <Box component={motion.div} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} sx={{ textAlign: 'center', color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }}>
             <Box sx={{ p: 4, bgcolor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)', borderRadius: '50%', mb: 3, display: 'inline-block' }}>
-              <Sparkles size={48} color={isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)"} />
+              {user?.subscription?.plan === 'basic' ? <Briefcase size={48} color="#ef4444" /> : <Sparkles size={48} color={isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)"} />}
             </Box>
-            <Typography variant="h5" fontWeight={800} color={isDark ? "white" : "#0f172a"}>You've seen everyone!</Typography>
-            <Typography variant="body1" mt={1}>Expand your subjects or check back later for new prospective Study Buddies.</Typography>
+            {user?.subscription?.plan === 'basic' ? (
+              <>
+                <Typography variant="h5" fontWeight={800} color={isDark ? "white" : "#0f172a"}>Daily Limit Reached</Typography>
+                <Typography variant="body1" mt={1} mb={3}>You've exhausted your free match pool. Upgrade to Pro to unlock unlimited Discovery and connect with high-consistency students.</Typography>
+                <Button variant="contained" onClick={() => navigate('/billing')} sx={{ bgcolor: '#8b5cf6', fontWeight: 800 }}>Unlock Serious Mode</Button>
+              </>
+            ) : (
+              <>
+                <Typography variant="h5" fontWeight={800} color={isDark ? "white" : "#0f172a"}>You've seen everyone!</Typography>
+                <Typography variant="body1" mt={1}>Expand your subjects or check back later for new prospective Study Buddies.</Typography>
+              </>
+            )}
           </Box>
         )}
 

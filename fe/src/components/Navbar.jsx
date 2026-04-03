@@ -44,8 +44,7 @@ function AnchorLink({ to, label, isActive, isDark }) {
             exit={{ scaleX: 0, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 500, damping: 40 }}
             style={{
-              position: 'absolute', bottom: -2, left: '50%',
-              transform: 'translateX(-50%)',
+              position: 'absolute', bottom: -2, left: 0, right: 0, margin: '0 auto',
               width: '70%', height: 2, borderRadius: 2,
               background: 'linear-gradient(90deg,#6366f1,#22d3ee)',
               boxShadow: '0 0 8px rgba(99,102,241,0.8)',

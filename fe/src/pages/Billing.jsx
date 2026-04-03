@@ -1,85 +1,371 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Container, Typography, Grid, Button, Chip, CircularProgress, Table, TableBody, TableCell, TableHead, TableRow, useTheme, Divider } from '@mui/material';
-import { motion } from 'framer-motion';
-import { Check, Zap, Users, Shield, Star, CreditCard, Download, Clock, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Check, Zap, Users, Shield, Star, CreditCard, Download, ArrowUpRight, Sparkles, TrendingUp, Lock, Wallet, RefreshCw, ChevronRight, AlertCircle, Calendar, Clock } from 'lucide-react';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
-const PLANS = [
+/* ─── Plan base meta (static, prices overridden from API) ─── */
+const PLAN_META = [
   {
-    key: 'basic',
-    name: 'Free',
-    price: 0,
-    priceLabel: '₹0',
-    desc: 'Everything you need to get started.',
-    cta: 'Current Plan',
-    icon: Shield,
-    color: '#6b7280',
-    features: [
-      '3 active connections',
-      'Public study rooms',
-      'Basic analytics',
-      'Community support',
-      '5 AI flashcard sets/month',
-    ],
+    key: 'basic', name: 'Starter', price: 0, priceLabel: '₹0', period: 'forever',
+    desc: 'Essential tools to begin your study journey.',
+    cta: 'Current Plan', icon: Shield, color: '#64748b', gradient: 'linear-gradient(135deg,#64748b,#475569)',
+    features: ['3 active connections','Public study rooms','Basic analytics','Community support','5 AI flashcard sets/month'],
   },
   {
-    key: 'pro',
-    name: 'Pro',
-    price: 799,
-    priceLabel: '₹799',
-    period: '/month',
-    desc: 'For serious learners who want more.',
-    cta: 'Upgrade to Pro',
-    icon: Zap,
-    color: '#6366f1',
+    key: 'pro', name: 'Pro', price: 799, priceLabel: '₹799', period: '/month',
+    desc: 'Unlock the full power of collaborative learning.',
+    cta: 'Activate Pro', icon: Zap, color: '#6366f1', gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
     popular: true,
-    features: [
-      'Unlimited connections',
-      'Private study rooms',
-      'Advanced analytics & insights',
-      'Priority support',
-      'Unlimited AI flashcard sets',
-      'Custom study goals',
-      'Export reports as PDF',
-    ],
+    features: ['Unlimited connections','Private study rooms','Advanced analytics & insights','Priority support','Unlimited AI flashcard sets','Custom study goals','Export reports as PDF'],
   },
   {
-    key: 'squad',
-    name: 'Team',
-    price: 1599,
-    priceLabel: '₹1,599',
-    period: '/month',
-    desc: 'Built for study groups and institutions.',
-    cta: 'Upgrade to Team',
-    icon: Users,
-    color: '#10b981',
-    features: [
-      'Everything in Pro',
-      'Up to 50 members per squad',
-      'Advanced admin tools',
-      'Shared analytics dashboard',
-      'Dedicated success manager',
-      'API access',
-      'Custom branding',
-    ],
+    key: 'squad', name: 'Team', price: 1599, priceLabel: '₹1,599', period: '/month',
+    desc: 'Built for high-performance study groups.',
+    cta: 'Activate Team', icon: Users, color: '#10b981', gradient: 'linear-gradient(135deg,#10b981,#059669)',
+    features: ['Everything in Pro','Up to 50 members per squad','Advanced admin tools','Shared analytics dashboard','Dedicated success manager','API access','Custom branding'],
   },
 ];
 
+const PAYMENT_METHODS = [
+  { label: 'VISA', color: '#1a1f71' }, { label: 'MC', color: '#eb001b' },
+  { label: 'UPI', color: '#1a73e8' }, { label: 'RuPay', color: '#10b981' },
+];
+
+const fmt = (d) => d ? new Date(d).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
+
+/* ─── Wallet Card ─── */
+function WalletCard({ currentPlan, activeUntil, billingCycle, statusLoading }) {
+  const plan = PLAN_META.find(p => p.key === currentPlan) || PLAN_META[0];
+  const cardRef = useRef(null);
+
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+    const onMove = (e) => {
+      const r = card.getBoundingClientRect();
+      const x = ((e.clientX - r.left) / r.width - 0.5) * 18;
+      const y = ((e.clientY - r.top) / r.height - 0.5) * 12;
+      card.style.transform = `perspective(800px) rotateX(${-y}deg) rotateY(${x}deg) scale(1.02)`;
+    };
+    const onLeave = () => { card.style.transform = 'perspective(800px) rotateX(0deg) rotateY(0deg) scale(1)'; };
+    card.addEventListener('mousemove', onMove);
+    card.addEventListener('mouseleave', onLeave);
+    return () => { card.removeEventListener('mousemove', onMove); card.removeEventListener('mouseleave', onLeave); };
+  }, []);
+
+  return (
+    <div ref={cardRef} style={{
+      position: 'relative', borderRadius: 28, padding: '2rem 2.25rem',
+      background: plan.gradient, color: '#fff',
+      boxShadow: `0 20px 60px ${plan.color}55, 0 4px 20px rgba(0,0,0,0.4)`,
+      overflow: 'hidden', transition: 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1)',
+      willChange: 'transform', cursor: 'default', minHeight: 200,
+    }}>
+      <div style={{ position:'absolute', inset:0, background:'linear-gradient(145deg,rgba(255,255,255,0.18) 0%,transparent 55%)', borderRadius:28, pointerEvents:'none' }} />
+      <div style={{ position:'absolute', top:-60, right:-60, width:220, height:220, borderRadius:'50%', background:'rgba(255,255,255,0.07)', pointerEvents:'none' }} />
+      <div style={{ position:'absolute', bottom:-40, left:-40, width:160, height:160, borderRadius:'50%', background:'rgba(255,255,255,0.05)', pointerEvents:'none' }} />
+
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'1.5rem', position:'relative', zIndex:1 }}>
+        <div>
+          <div style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.18em', opacity:0.7, textTransform:'uppercase', marginBottom:4 }}>StudyFriend</div>
+          <div style={{ fontSize:'1.4rem', fontWeight:900, letterSpacing:'-0.5px' }}>{plan.name} Plan</div>
+        </div>
+        <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end' }}>
+          <div style={{ background:'rgba(255,255,255,0.18)', backdropFilter:'blur(10px)', borderRadius:12, padding:'6px 12px', display:'flex', alignItems:'center', gap:6, border:'1px solid rgba(255,255,255,0.2)' }}>
+            <div style={{ width:7, height:7, borderRadius:'50%', background:'#4ade80', boxShadow:'0 0 8px #4ade80' }} />
+            <span style={{ fontSize:'0.7rem', fontWeight:700 }}>ACTIVE</span>
+          </div>
+          {plan.price > 0 && billingCycle && (
+            <div style={{ background:'rgba(255,255,255,0.12)', backdropFilter:'blur(10px)', borderRadius:8, padding:'4px 10px', border:'1px solid rgba(255,255,255,0.15)' }}>
+              <span style={{ fontSize:'0.62rem', fontWeight:800, letterSpacing:'0.08em', textTransform:'uppercase' }}>
+                {billingCycle === 'annual' ? '📅 Annual' : '🗓️ Monthly'}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{ display:'flex', alignItems:'center', gap:'1rem', marginBottom:'1.5rem', position:'relative', zIndex:1 }}>
+        <plan.icon size={36} strokeWidth={1.5} />
+        <div>
+          <div style={{ fontSize:'0.72rem', opacity:0.65, marginBottom:2 }}>Current Cycle</div>
+          <div style={{ fontSize:'1rem', fontWeight:800 }}>
+            {activeUntil ? `Renews ${fmt(activeUntil)}` : plan.price === 0 ? 'No expiry · Free forever' : '—'}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display:'flex', gap:8, position:'relative', zIndex:1 }}>
+        {PAYMENT_METHODS.map(m => (
+          <div key={m.label} style={{ background:'rgba(255,255,255,0.15)', backdropFilter:'blur(8px)', border:'1px solid rgba(255,255,255,0.2)', borderRadius:6, padding:'3px 9px', fontSize:'0.62rem', fontWeight:800, letterSpacing:'0.05em' }}>
+            {m.label}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Stat Pill ─── */
+function StatPill({ icon: Icon, label, value, color }) {
+  return (
+    <div style={{ flex:1, minWidth:120, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:16, padding:'1rem 1.25rem', display:'flex', flexDirection:'column', gap:8 }}>
+      <div style={{ width:34, height:34, borderRadius:10, background:color+'20', border:`1px solid ${color}30`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <Icon size={16} color={color} />
+      </div>
+      <div style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.45)', fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase' }}>{label}</div>
+      <div style={{ fontSize:'1.15rem', fontWeight:900, color:'#f0f0f5' }}>{value}</div>
+    </div>
+  );
+}
+
+/* ─── Billing Toggle ─── */
+function BillingToggle({ billingCycle, onChange, annualDiscount }) {
+  const isAnnual = billingCycle === 'annual';
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'0.6rem 1rem', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:14, width:'fit-content' }}>
+      <button
+        onClick={() => onChange('monthly')}
+        style={{
+          padding:'0.45rem 1rem', borderRadius:10, border:'none', cursor:'pointer', fontFamily:'inherit', fontWeight:700, fontSize:'0.8rem', transition:'all 0.2s',
+          background: !isAnnual ? 'rgba(99,102,241,0.25)' : 'transparent',
+          color: !isAnnual ? '#818cf8' : 'rgba(255,255,255,0.4)',
+          outline:'none',
+        }}
+      >
+        <Clock size={12} style={{ marginRight:4, verticalAlign:'middle' }} />
+        Monthly
+      </button>
+      <button
+        onClick={() => onChange('annual')}
+        style={{
+          padding:'0.45rem 1rem', borderRadius:10, border:'none', cursor:'pointer', fontFamily:'inherit', fontWeight:700, fontSize:'0.8rem', transition:'all 0.2s', display:'flex', alignItems:'center', gap:6,
+          background: isAnnual ? 'rgba(16,185,129,0.2)' : 'transparent',
+          color: isAnnual ? '#34d399' : 'rgba(255,255,255,0.4)',
+          outline:'none',
+        }}
+      >
+        <Calendar size={12} />
+        Annual
+        {annualDiscount > 0 && (
+          <span style={{ background:'linear-gradient(135deg,#10b981,#059669)', color:'white', borderRadius:9999, padding:'1px 7px', fontSize:'0.6rem', fontWeight:900, letterSpacing:'0.05em' }}>
+            -{annualDiscount}%
+          </span>
+        )}
+      </button>
+    </div>
+  );
+}
+
+/* ─── Plan Card ─── */
+function PlanCard({ plan, isActive, loading, statusLoading, onUpgrade, billingCycle }) {
+  const Icon = plan.icon;
+  const isAnnual = billingCycle === 'annual';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      style={{
+        flex: 1, minWidth: 260,
+        background: isActive ? `${plan.color}10` : 'rgba(255,255,255,0.03)',
+        border: `1.5px solid ${isActive ? plan.color + '55' : plan.popular ? plan.color + '30' : 'rgba(255,255,255,0.08)'}`,
+        borderRadius: 24, padding: '1.75rem',
+        display: 'flex', flexDirection: 'column',
+        position: 'relative', overflow: 'hidden',
+        boxShadow: plan.popular ? `0 0 40px ${plan.color}20` : 'none',
+        cursor: 'default',
+      }}
+    >
+      {plan.popular && (
+        <div style={{ position:'absolute', top:0, left:'50%', transform:'translateX(-50%)', background:plan.gradient, borderRadius:'0 0 12px 12px', padding:'4px 14px', display:'flex', alignItems:'center', gap:5 }}>
+          <Star size={9} fill="white" color="white" />
+          <span style={{ fontSize:'0.6rem', fontWeight:800, color:'white', letterSpacing:1 }}>MOST POPULAR</span>
+        </div>
+      )}
+      <div style={{ position:'absolute', top:-40, right:-40, width:150, height:150, borderRadius:'50%', background:`radial-gradient(circle, ${plan.color}18, transparent 70%)`, pointerEvents:'none' }} />
+
+      <div style={{ paddingTop: plan.popular ? '1.25rem' : 0, position:'relative', zIndex:1, display:'flex', flexDirection:'column', flex:1 }}>
+        {/* Icon + name */}
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:'1rem' }}>
+          <div style={{ width:42, height:42, borderRadius:12, background:plan.gradient, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:`0 6px 16px ${plan.color}40` }}>
+            <Icon size={20} color="white" />
+          </div>
+          <div>
+            <div style={{ fontWeight:800, fontSize:'1rem', color:'#f0f0f5' }}>{plan.name}</div>
+            {isActive && (
+              <div style={{ display:'inline-flex', alignItems:'center', gap:4, marginTop:2, background:plan.color+'20', border:`1px solid ${plan.color}40`, borderRadius:9999, padding:'1px 8px' }}>
+                <div style={{ width:5, height:5, borderRadius:'50%', background:plan.color }} />
+                <span style={{ fontSize:'0.58rem', fontWeight:800, color:plan.color }}>ACTIVE</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Price */}
+        {plan.key === 'basic' ? (
+          <div style={{ marginBottom:'0.75rem' }}>
+            <div style={{ display:'flex', alignItems:'baseline', gap:4 }}>
+              <span style={{ fontWeight:900, fontSize:'2.1rem', color:'#f0f0f5', letterSpacing:'-1px', fontFamily:'Space Grotesk, sans-serif' }}>₹0</span>
+              <span style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.4)', fontWeight:500 }}>forever</span>
+            </div>
+            <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.45)', marginTop:4 }}>{plan.desc}</div>
+          </div>
+        ) : (
+          <div style={{ marginBottom:'0.75rem' }}>
+            <div style={{ display:'flex', alignItems:'baseline', gap:6, flexWrap:'wrap' }}>
+              {/* Strikethrough: show original monthly when annual, or promo original */}
+              {isAnnual && plan.annualOriginalMonthly && (
+                <span style={{ fontWeight:600, fontSize:'1rem', color:'rgba(255,255,255,0.3)', textDecoration:'line-through', fontFamily:'Space Grotesk, sans-serif' }}>
+                  ₹{plan.annualOriginalMonthly.toLocaleString('en-IN')}
+                </span>
+              )}
+              {!isAnnual && plan.originalPriceLabel && (
+                <span style={{ fontWeight:600, fontSize:'1rem', color:'rgba(255,255,255,0.3)', textDecoration:'line-through', fontFamily:'Space Grotesk, sans-serif' }}>
+                  {plan.originalPriceLabel}
+                </span>
+              )}
+              <span style={{ fontWeight:900, fontSize:'2.1rem', color:'#f0f0f5', letterSpacing:'-1px', fontFamily:'Space Grotesk, sans-serif' }}>
+                {isAnnual ? `₹${plan.annualMonthly?.toLocaleString('en-IN') ?? plan.priceLabel}` : plan.priceLabel}
+              </span>
+              <span style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.4)', fontWeight:500 }}>/month</span>
+            </div>
+
+            {/* Annual total badge */}
+            {isAnnual && plan.annualTotal && (
+              <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:4, flexWrap:'wrap' }}>
+                <span style={{ fontSize:'0.7rem', background:'linear-gradient(135deg,#10b981,#059669)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', fontWeight:800 }}>
+                  📅 ₹{plan.annualTotal?.toLocaleString('en-IN')} billed annually
+                </span>
+                {plan.annualDiscount > 0 && (
+                  <span style={{ background:'rgba(16,185,129,0.15)', border:'1px solid rgba(16,185,129,0.3)', borderRadius:9999, padding:'1px 7px', fontSize:'0.6rem', fontWeight:800, color:'#34d399' }}>
+                    Save {plan.annualDiscount}%
+                  </span>
+                )}
+              </div>
+            )}
+
+            {!isAnnual && plan.originalPriceLabel && (
+              <div style={{ fontSize:'0.7rem', color:'#10b981', fontWeight:700, marginTop:2 }}>🏷️ Special Discount Applied</div>
+            )}
+            <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.45)', marginTop:4 }}>{plan.desc}</div>
+          </div>
+        )}
+
+        <div style={{ height:1, background:'rgba(255,255,255,0.07)', margin:'1rem 0' }} />
+
+        <div style={{ display:'flex', flexDirection:'column', gap:10, flex:1, marginBottom:'1.5rem' }}>
+          {plan.features.map(f => (
+            <div key={f} style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
+              <div style={{ width:18, height:18, borderRadius:6, background:plan.color+'22', flexShrink:0, marginTop:1, display:'flex', alignItems:'center', justifyContent:'center', border:`1px solid ${plan.color}35` }}>
+                <Check size={10} color={plan.color} strokeWidth={3} />
+              </div>
+              <span style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.55)', lineHeight:1.45 }}>{f}</span>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={() => onUpgrade(plan.key)}
+          disabled={isActive || loading || statusLoading}
+          style={{
+            width:'100%', padding:'0.85rem', borderRadius:14, border:'none',
+            background: isActive ? 'rgba(255,255,255,0.06)' : plan.popular ? plan.gradient : `rgba(${plan.color === '#64748b' ? '100,116,139' : plan.color === '#10b981' ? '16,185,129' : '99,102,241'},0.15)`,
+            color: isActive ? 'rgba(255,255,255,0.3)' : 'white',
+            fontWeight:700, fontSize:'0.88rem', cursor: isActive ? 'default' : 'pointer',
+            display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+            transition:'all 0.2s',
+            boxShadow: plan.popular && !isActive ? `0 6px 20px ${plan.color}50` : 'none',
+            outline:'none', fontFamily:'inherit',
+            border: !plan.popular && !isActive ? `1px solid ${plan.color}40` : 'none',
+          }}
+        >
+          {loading && !isActive ? <RefreshCw size={14} style={{ animation:'spin 1s linear infinite' }} /> : null}
+          {isActive ? 'Current Plan' : plan.cta}
+          {!isActive && !loading && <ChevronRight size={14} />}
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ─── Transaction Row ─── */
+function TxRow({ item }) {
+  return (
+    <motion.div
+      initial={{ opacity:0, x:-10 }}
+      animate={{ opacity:1, x:0 }}
+      style={{ display:'flex', alignItems:'center', gap:14, padding:'0.9rem 1.25rem', borderBottom:'1px solid rgba(255,255,255,0.05)', transition:'background 0.15s' }}
+      whileHover={{ background:'rgba(255,255,255,0.025)' }}
+    >
+      <div style={{ width:38, height:38, borderRadius:12, background:'rgba(99,102,241,0.15)', border:'1px solid rgba(99,102,241,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+        <TrendingUp size={16} color="#6366f1" />
+      </div>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontWeight:700, fontSize:'0.85rem', color:'#f0f0f5', textTransform:'capitalize' }}>
+          {item.plan} Plan Upgrade
+          {item.billingCycle && <span style={{ marginLeft:6, fontSize:'0.65rem', background:'rgba(99,102,241,0.15)', border:'1px solid rgba(99,102,241,0.25)', borderRadius:6, padding:'1px 6px', color:'#818cf8', fontWeight:800 }}>{item.billingCycle}</span>}
+        </div>
+        <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.4)', marginTop:2 }}>{fmt(item.date)}</div>
+      </div>
+      <div style={{ display:'flex', alignItems:'center', gap:6, marginRight:8 }}>
+        <div style={{ width:6, height:6, borderRadius:'50%', background:'#4ade80' }} />
+        <span style={{ fontSize:'0.72rem', color:'#4ade80', fontWeight:700 }}>Paid</span>
+      </div>
+      <div style={{ fontWeight:800, fontSize:'0.95rem', color:'#f0f0f5', marginRight:12, fontFamily:'Space Grotesk, monospace' }}>
+        ₹{item.amount?.toLocaleString('en-IN')}
+      </div>
+      <button
+        style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'5px 10px', cursor:'pointer', display:'flex', alignItems:'center', gap:4, color:'rgba(255,255,255,0.5)', fontSize:'0.7rem', fontWeight:700, transition:'all 0.15s', fontFamily:'inherit' }}
+        onMouseEnter={e => { e.currentTarget.style.background='rgba(99,102,241,0.15)'; e.currentTarget.style.color='#6366f1'; }}
+        onMouseLeave={e => { e.currentTarget.style.background='rgba(255,255,255,0.06)'; e.currentTarget.style.color='rgba(255,255,255,0.5)'; }}
+      >
+        <Download size={11} /> PDF
+      </button>
+    </motion.div>
+  );
+}
+
+/* ─── Main Billing Page ─── */
 export default function Billing() {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === 'dark';
   const { user, updateUser } = useAuth();
   const [status, setStatus] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+  const [activeTab, setActiveTab] = useState('plans');
+  const [livePricing, setLivePricing] = useState({});
+  const [billingCycle, setBillingCycle] = useState('monthly');
+
+  // Merge live admin pricing into plan definitions for selected cycle
+  const PLANS = PLAN_META.map(p => {
+    if (p.key === 'basic') return p;
+    const live = livePricing[p.key];
+    if (!live) return p;
+    return {
+      ...p,
+      price: live.effectivePrice,
+      priceLabel: `₹${live.effectivePrice.toLocaleString('en-IN')}`,
+      originalPrice: live.originalPrice || null,
+      originalPriceLabel: live.originalPrice ? `₹${live.originalPrice.toLocaleString('en-IN')}` : null,
+      annualDiscount: live.annualDiscount || 0,
+      annualMonthly: live.annualMonthly,
+      annualTotal: live.annualTotal,
+      annualOriginalMonthly: live.annualOriginalMonthly,
+    };
+  });
 
   const currentPlan = status?.plan || user?.subscription?.plan || 'basic';
   const activeUntil = status?.activeUntil;
-  const isRealGateway = status?.isRealGateway;
+  const currentBillingCycle = status?.billingCycle || 'monthly';
+
+  // Determine max annual discount across plans to show in toggle
+  const maxAnnualDiscount = Math.max(...Object.values(livePricing).map(p => p.annualDiscount || 0), 0);
 
   useEffect(() => {
     const script = document.createElement('script');
@@ -90,22 +376,22 @@ export default function Billing() {
   }, []);
 
   useEffect(() => {
-    const fetchStatus = async () => {
+    const fetchAll = async () => {
       setStatusLoading(true);
       try {
-        const [statusRes, historyRes] = await Promise.all([
+        const [sRes, hRes, pRes] = await Promise.all([
           api.get('/billing/status'),
           api.get('/billing/history'),
+          api.get('/billing/pricing').catch(() => ({ data: {} })),
         ]);
-        setStatus(statusRes.data);
-        setHistory(historyRes.data || []);
+        setStatus(sRes.data);
+        setHistory(hRes.data || []);
+        setLivePricing(pRes.data || {});
       } catch {
-        setStatus({ plan: user?.subscription?.plan || 'basic', activeUntil: user?.subscription?.activeUntil });
-      } finally {
-        setStatusLoading(false);
-      }
+        setStatus({ plan: user?.subscription?.plan || 'basic', activeUntil: user?.subscription?.activeUntil, billingCycle: 'monthly' });
+      } finally { setStatusLoading(false); }
     };
-    fetchStatus();
+    fetchAll();
   }, [user?.subscription]);
 
   const handleUpgrade = async (planKey) => {
@@ -113,38 +399,31 @@ export default function Billing() {
     if (planKey === 'basic') return toast.error('Use Cancel Subscription to downgrade.');
     setLoading(true);
     try {
-      const { data } = await api.post('/billing/create-order', { plan: planKey });
+      const { data } = await api.post('/billing/create-order', { plan: planKey, billingCycle });
       const { orderId, amount, currency, key_id, isMock } = data;
-
       if (isMock) {
-        const verifyRes = await api.post('/billing/verify', {
+        const vRes = await api.post('/billing/verify', {
           razorpay_order_id: orderId, razorpay_payment_id: `demo_${Date.now()}`,
-          razorpay_signature: 'mock_sig', plan: planKey, isMock: true,
+          razorpay_signature: 'mock_sig', plan: planKey, isMock: true, billingCycle,
         });
-        toast.success('Plan upgraded successfully!');
-        updateUser({ ...user, subscription: verifyRes.data.subscription });
-        setStatus(prev => ({ ...prev, plan: planKey, activeUntil: verifyRes.data.subscription.activeUntil }));
-        setLoading(false);
-        return;
+        toast.success(`Plan upgraded! (${billingCycle})`);
+        updateUser({ ...user, subscription: vRes.data.subscription });
+        setStatus(p => ({ ...p, plan: planKey, activeUntil: vRes.data.subscription.activeUntil, billingCycle }));
+        setLoading(false); return;
       }
-
+      const cycleLabel = billingCycle === 'annual' ? ' (Annual)' : ' (Monthly)';
       const options = {
-        key: key_id, amount, currency, name: 'StudyBuddy', description: `Upgrade to ${planKey}`,
-        order_id: orderId,
+        key: key_id, amount, currency, name: 'StudyFriend',
+        description: `Upgrade to ${planKey}${cycleLabel}`, order_id: orderId,
         handler: async (response) => {
           try {
-            const verifyRes = await api.post('/billing/verify', {
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              plan: planKey, isMock: false,
-            });
-            toast.success('Plan upgraded successfully!');
-            updateUser({ ...user, subscription: verifyRes.data.subscription });
-            setStatus(prev => ({ ...prev, plan: planKey, activeUntil: verifyRes.data.subscription.activeUntil }));
+            const vRes = await api.post('/billing/verify', { ...response, plan: planKey, isMock: false, billingCycle });
+            toast.success(`Plan upgraded! (${billingCycle})`);
+            updateUser({ ...user, subscription: vRes.data.subscription });
+            setStatus(p => ({ ...p, plan: planKey, activeUntil: vRes.data.subscription.activeUntil, billingCycle }));
             const h = await api.get('/billing/history');
             setHistory(h.data || []);
-          } catch { toast.error('Payment verification failed.'); }
+          } catch { toast.error('Verification failed.'); }
         },
         prefill: { name: user?.name, email: user?.email },
         theme: { color: '#6366f1' },
@@ -158,278 +437,142 @@ export default function Billing() {
 
   const handleCancel = async () => {
     if (currentPlan === 'basic') return toast('You are on the free plan.', { icon: 'ℹ️' });
-    if (!window.confirm('Are you sure you want to cancel your subscription?')) return;
+    if (!window.confirm('Cancel your subscription?')) return;
     setCancelling(true);
     try {
       const { data } = await api.post('/billing/cancel');
       toast.success('Subscription cancelled.');
       updateUser({ ...user, subscription: data.subscription });
-      setStatus(prev => ({ ...prev, plan: 'basic', activeUntil: null }));
+      setStatus(p => ({ ...p, plan: 'basic', activeUntil: null, billingCycle: 'monthly' }));
     } catch { toast.error('Cancellation failed.'); } finally { setCancelling(false); }
   };
 
-  const fmt = (d) => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—';
-
-  const bg = isDark ? '#0f172a' : '#f8fafc';
-  const cardBg = isDark ? '#0d1117' : '#ffffff';
-  const borderC = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)';
-  const textPrimary = isDark ? 'white' : '#0f172a';
-  const textSecondary = isDark ? 'rgba(255,255,255,0.55)' : '#6b7280';
+  const totalSpent = history.reduce((acc, h) => acc + (h.amount || 0), 0);
 
   return (
-    <Box sx={{ bgcolor: bg, py: { xs: 5, md: 8 } }}>
-      <Container maxWidth="lg">
+    <div style={{ minHeight:'100vh', background:'#080c14', padding:'2.5rem 1.5rem 4rem', fontFamily:'Inter, sans-serif' }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        @keyframes spin { to { transform: rotate(360deg); } }
+        * { box-sizing: border-box; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+      `}</style>
 
-        {/* Page Header */}
-        <Box sx={{ mb: 8, textAlign: 'center' }}>
-          <Typography sx={{ fontWeight: 900, fontSize: { xs: '2rem', md: '2.6rem' }, color: textPrimary, letterSpacing: -1, lineHeight: 1.15, mb: 1.5 }}>
-            Simple, transparent pricing
-          </Typography>
-          <Typography sx={{ fontSize: '1.05rem', color: textSecondary, maxWidth: 480, mx: 'auto', lineHeight: 1.6 }}>
-            Choose the plan that best fits your study goals. Upgrade or cancel at any time.
-          </Typography>
+      <div style={{ maxWidth:1100, margin:'0 auto' }}>
 
-          {/* Current plan indicator */}
-          {!statusLoading && (
-            <Box sx={{ mt: 3, display: 'inline-flex', alignItems: 'center', gap: 1.5, px: 3, py: 1.25, borderRadius: '12px', bgcolor: isDark ? 'rgba(99,102,241,0.1)' : 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)' }}>
-              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#22c55e', boxShadow: '0 0 6px rgba(34,197,94,0.8)' }} />
-              <Typography sx={{ fontSize: '0.82rem', fontWeight: 700, color: '#6366f1' }}>
-                Current plan: <strong>{PLANS.find(p => p.key === currentPlan)?.name || 'Free'}</strong>
-                {activeUntil && ` · Renews ${fmt(activeUntil)}`}
-              </Typography>
-            </Box>
-          )}
-        </Box>
+        {/* Page header */}
+        <div style={{ marginBottom:'2.5rem' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
+            <Wallet size={22} color="#6366f1" />
+            <h1 style={{ margin:0, fontFamily:'Space Grotesk, sans-serif', fontWeight:900, fontSize:'1.75rem', color:'#f0f0f5', letterSpacing:'-0.5px' }}>Billing & Wallet</h1>
+          </div>
+          <p style={{ margin:0, fontSize:'0.9rem', color:'rgba(255,255,255,0.4)' }}>Manage your subscription, payments, and invoices.</p>
+        </div>
 
-        {/* Plan Cards */}
-        <Grid container spacing={2.5} sx={{ mb: 8 }} alignItems="stretch">
-          {PLANS.map((plan, i) => {
-            const isActive = currentPlan === plan.key;
-            const Icon = plan.icon;
+        {/* Top layout: Wallet card + Stats */}
+        <div style={{ display:'flex', gap:'1.5rem', flexWrap:'wrap', marginBottom:'2rem' }}>
+          <div style={{ flex:'1 1 320px', minWidth:300 }}>
+            <WalletCard currentPlan={currentPlan} activeUntil={activeUntil} billingCycle={currentBillingCycle} statusLoading={statusLoading} />
+          </div>
+          <div style={{ flex:'1 1 280px', display:'flex', flexDirection:'column', gap:'1rem' }}>
+            <div style={{ display:'flex', gap:'0.85rem', flexWrap:'wrap', flex:1 }}>
+              <StatPill icon={TrendingUp} label="Total Spent" value={`₹${totalSpent.toLocaleString('en-IN')}`} color="#6366f1" />
+              <StatPill icon={Sparkles} label="Transactions" value={history.length} color="#10b981" />
+              <StatPill icon={Lock} label="Secure Gateway" value="Razorpay" color="#f59e0b" />
+            </div>
+            <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:16, padding:'1rem 1.25rem', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+              <CreditCard size={16} color="rgba(255,255,255,0.5)" />
+              <span style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.45)', fontWeight:600, flex:1 }}>Accepted payments</span>
+              {PAYMENT_METHODS.map(m => (
+                <div key={m.label} style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:6, padding:'2px 9px', fontSize:'0.65rem', fontWeight:800, color:'rgba(255,255,255,0.6)', letterSpacing:'0.05em' }}>{m.label}</div>
+              ))}
+            </div>
+            {currentPlan !== 'basic' && (
+              <button
+                onClick={handleCancel} disabled={cancelling}
+                style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:12, padding:'0.7rem 1rem', color:'#f87171', fontWeight:700, fontSize:'0.82rem', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, transition:'all 0.2s', fontFamily:'inherit', outline:'none' }}
+                onMouseEnter={e => { e.currentTarget.style.background='rgba(239,68,68,0.14)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background='rgba(239,68,68,0.08)'; }}
+              >
+                <AlertCircle size={14} /> {cancelling ? 'Cancelling...' : 'Cancel Subscription'}
+              </button>
+            )}
+          </div>
+        </div>
 
-            return (
-              <Grid item xs={12} md={4} key={plan.key} sx={{ display: 'flex' }}>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.08 }}
-                  style={{ width: '100%' }}
-                >
-                  <Box sx={{
-                    height: '100%', display: 'flex', flexDirection: 'column',
-                    borderRadius: '20px', overflow: 'hidden',
-                    bgcolor: cardBg,
-                    border: `1.5px solid ${isActive ? plan.color + '55' : (plan.popular ? plan.color + '33' : borderC)}`,
-                    boxShadow: plan.popular
-                      ? `0 0 0 1px ${plan.color}22, 0 8px 32px ${plan.color}18, ${isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 4px 20px rgba(0,0,0,0.07)'}`
-                      : isDark ? '0 4px 20px rgba(0,0,0,0.2)' : '0 4px 16px rgba(0,0,0,0.06)',
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      boxShadow: `0 8px 40px ${plan.color}22, ${isDark ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 20px rgba(0,0,0,0.1)'}`,
-                      transform: 'translateY(-2px)',
-                    },
-                    position: 'relative',
-                  }}>
-                    {/* Most Popular badge */}
-                    {plan.popular && (
-                      <Box sx={{
-                        position: 'absolute', top: -1, left: '50%', transform: 'translateX(-50%)',
-                        px: 2, py: 0.5,
-                        background: `linear-gradient(135deg, ${plan.color}, #8b5cf6)`,
-                        borderRadius: '0 0 10px 10px',
-                        display: 'flex', alignItems: 'center', gap: 0.75,
-                      }}>
-                        <Star size={10} color="white" fill="white" />
-                        <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, color: 'white', letterSpacing: 0.5 }}>
-                          MOST POPULAR
-                        </Typography>
-                      </Box>
-                    )}
-
-                    {/* Card content */}
-                    <Box sx={{ p: 3.5, pt: plan.popular ? 4.5 : 3.5, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                      {/* Icon + Name */}
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
-                        <Box sx={{
-                          width: 40, height: 40, borderRadius: '10px',
-                          bgcolor: plan.color + '15', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          border: `1px solid ${plan.color}25`,
-                        }}>
-                          <Icon size={20} color={plan.color} />
-                        </Box>
-                        <Box>
-                          <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: textPrimary }}>
-                            {plan.name}
-                          </Typography>
-                          {isActive && (
-                            <Chip
-                              label="Active"
-                              size="small"
-                              sx={{
-                                height: 18, fontSize: '0.6rem', fontWeight: 800,
-                                bgcolor: plan.color + '18', color: plan.color,
-                                border: `1px solid ${plan.color}33`,
-                              }}
-                            />
-                          )}
-                        </Box>
-                      </Box>
-
-                      {/* Price */}
-                      <Box sx={{ mb: 1 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
-                          <Typography sx={{ fontWeight: 900, fontSize: '2.2rem', color: textPrimary, letterSpacing: -1 }}>
-                            {plan.priceLabel}
-                          </Typography>
-                          {plan.period && (
-                            <Typography sx={{ fontSize: '0.85rem', color: textSecondary, fontWeight: 500 }}>
-                              {plan.period}
-                            </Typography>
-                          )}
-                        </Box>
-                      </Box>
-
-                      {/* Desc */}
-                      <Typography sx={{ fontSize: '0.85rem', color: textSecondary, mb: 2.5, lineHeight: 1.5 }}>
-                        {plan.desc}
-                      </Typography>
-
-                      {/* Divider */}
-                      <Divider sx={{ borderColor: borderC, mb: 2.5 }} />
-
-                      {/* Features */}
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25, flex: 1, mb: 3 }}>
-                        {plan.features.map(f => (
-                          <Box key={f} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.25 }}>
-                            <Box sx={{
-                              width: 18, height: 18, borderRadius: '5px', flexShrink: 0, mt: 0.1,
-                              bgcolor: plan.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}>
-                              <Check size={11} color={plan.color} strokeWidth={3} />
-                            </Box>
-                            <Typography sx={{ fontSize: '0.85rem', color: textSecondary, lineHeight: 1.4 }}>{f}</Typography>
-                          </Box>
-                        ))}
-                      </Box>
-
-                      {/* CTA */}
-                      <Button
-                        fullWidth
-                        onClick={() => handleUpgrade(plan.key)}
-                        disabled={isActive || loading || statusLoading}
-                        variant={plan.popular ? 'contained' : 'outlined'}
-                        endIcon={!isActive && <ChevronRight size={15} />}
-                        sx={plan.popular
-                          ? {
-                            background: `linear-gradient(135deg, ${plan.color}, #8b5cf6)`,
-                            color: 'white', borderRadius: '12px', py: 1.4, fontWeight: 700,
-                            textTransform: 'none', fontSize: '0.9rem',
-                            boxShadow: `0 4px 16px ${plan.color}40`,
-                            '&:hover': { opacity: 0.92, boxShadow: `0 6px 20px ${plan.color}55` },
-                            '&.Mui-disabled': { bgcolor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)', color: 'text.disabled', boxShadow: 'none' },
-                          }
-                          : {
-                            borderRadius: '12px', py: 1.4, fontWeight: 700, textTransform: 'none', fontSize: '0.9rem',
-                            borderColor: isActive ? plan.color + '44' : borderC,
-                            color: isActive ? plan.color : textSecondary,
-                            '&:hover': { borderColor: plan.color, color: plan.color, bgcolor: plan.color + '06' },
-                            '&.Mui-disabled': { borderColor: borderC, color: 'text.disabled' },
-                          }
-                        }
-                      >
-                        {loading && !isActive ? '...' : isActive ? 'Current Plan' : plan.cta}
-                      </Button>
-                    </Box>
-                  </Box>
-                </motion.div>
-              </Grid>
-            );
-          })}
-        </Grid>
-
-        {/* Payment Method Row */}
-        <Box sx={{
-          p: 3, borderRadius: '16px', bgcolor: cardBg,
-          border: `1px solid ${borderC}`,
-          display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 6,
-          boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.2)' : '0 4px 16px rgba(0,0,0,0.05)',
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Box sx={{ width: 40, height: 40, borderRadius: '10px', bgcolor: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(99,102,241,0.2)' }}>
-              <CreditCard size={20} color="#6366f1" />
-            </Box>
-            <Box>
-              <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', color: textPrimary }}>Payment Method</Typography>
-              <Typography sx={{ fontSize: '0.78rem', color: textSecondary }}>Powered by Razorpay · UPI, Cards, Net Banking accepted</Typography>
-            </Box>
-          </Box>
-          <Box sx={{ ml: 'auto', display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            {['Visa', 'Mastercard', 'UPI', 'RuPay'].map(m => (
-              <Box key={m} sx={{ px: 1.5, py: 0.5, borderRadius: '6px', bgcolor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', border: `1px solid ${borderC}` }}>
-                <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: textSecondary }}>{m}</Typography>
-              </Box>
-            ))}
-          </Box>
-          {currentPlan !== 'basic' && (
-            <Button
-              variant="text"
-              size="small"
-              onClick={handleCancel}
-              disabled={cancelling}
-              sx={{ color: '#ef4444', fontWeight: 600, fontSize: '0.78rem', textTransform: 'none', '&:hover': { bgcolor: 'rgba(239,68,68,0.06)' } }}
+        {/* Tabs */}
+        <div style={{ display:'flex', gap:6, marginBottom:'1.5rem', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:14, padding:5, width:'fit-content' }}>
+          {[{ id:'plans', label:'Plans' }, { id:'history', label:'Transaction History' }].map(tab => (
+            <button
+              key={tab.id} onClick={() => setActiveTab(tab.id)}
+              style={{ background: activeTab===tab.id?'rgba(99,102,241,0.22)':'transparent', border: activeTab===tab.id?'1px solid rgba(99,102,241,0.35)':'1px solid transparent', borderRadius:10, padding:'0.5rem 1.1rem', color: activeTab===tab.id?'#818cf8':'rgba(255,255,255,0.4)', fontWeight:700, fontSize:'0.82rem', cursor:'pointer', transition:'all 0.2s', fontFamily:'inherit', outline:'none' }}
             >
-              {cancelling ? 'Cancelling...' : 'Cancel Subscription'}
-            </Button>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <AnimatePresence mode="wait">
+          {activeTab === 'plans' && (
+            <motion.div key="plans" initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-8 }} transition={{ duration:0.3 }}>
+
+              {/* ── Billing Cycle Toggle ── */}
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'1rem', marginBottom:'1.5rem' }}>
+                <BillingToggle billingCycle={billingCycle} onChange={setBillingCycle} annualDiscount={maxAnnualDiscount} />
+                {billingCycle === 'annual' && maxAnnualDiscount > 0 && (
+                  <motion.div
+                    initial={{ opacity:0, scale:0.9 }} animate={{ opacity:1, scale:1 }}
+                    style={{ display:'flex', alignItems:'center', gap:8, padding:'0.5rem 1rem', background:'rgba(16,185,129,0.08)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:12 }}
+                  >
+                    <span style={{ fontSize:'0.75rem', color:'#34d399', fontWeight:700 }}>
+                      🎉 You save up to {maxAnnualDiscount}% with annual billing!
+                    </span>
+                  </motion.div>
+                )}
+              </div>
+
+              {/* Plan cards */}
+              <div style={{ display:'flex', gap:'1.25rem', flexWrap:'wrap' }}>
+                {PLANS.map(plan => (
+                  <PlanCard key={plan.key} plan={plan} isActive={currentPlan === plan.key} loading={loading} statusLoading={statusLoading} onUpgrade={handleUpgrade} billingCycle={billingCycle} />
+                ))}
+              </div>
+
+              {/* Info strip */}
+              <div style={{ marginTop:'1.5rem', background:'rgba(99,102,241,0.06)', border:'1px solid rgba(99,102,241,0.15)', borderRadius:14, padding:'1rem 1.25rem', display:'flex', alignItems:'center', gap:10 }}>
+                <Lock size={14} color="#6366f1" />
+                <span style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.45)' }}>
+                  All payments secured via Razorpay. {billingCycle === 'annual' ? 'Annual plans are billed as a single upfront payment.' : 'You can cancel anytime from the wallet panel.'}
+                </span>
+                <ArrowUpRight size={14} color="rgba(99,102,241,0.5)" style={{ marginLeft:'auto', flexShrink:0 }} />
+              </div>
+            </motion.div>
           )}
-        </Box>
 
-        {/* Billing History */}
-        {history.length > 0 && (
-          <Box>
-            <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', color: textPrimary, mb: 2 }}>
-              Billing History
-            </Typography>
-            <Box sx={{
-              borderRadius: '16px', border: `1px solid ${borderC}`, overflow: 'hidden',
-              bgcolor: cardBg, boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.2)' : '0 4px 16px rgba(0,0,0,0.05)',
-            }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }}>
-                    {['Date', 'Plan', 'Amount', 'Status', 'Invoice'].map(h => (
-                      <TableCell key={h} sx={{ fontWeight: 700, fontSize: '0.78rem', color: textSecondary, borderColor: borderC, py: 1.5 }}>{h}</TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {history.map((item) => (
-                    <TableRow key={item.id} sx={{ '& td': { borderColor: borderC, py: 1.5 }, '&:last-child td': { borderBottom: 'none' } }}>
-                      <TableCell sx={{ fontSize: '0.85rem', color: textSecondary }}>{fmt(item.date)}</TableCell>
-                      <TableCell>
-                        <Chip label={item.plan} size="small" sx={{ bgcolor: 'rgba(99,102,241,0.1)', color: '#818cf8', fontWeight: 700, fontSize: '0.7rem', textTransform: 'capitalize' }} />
-                      </TableCell>
-                      <TableCell sx={{ fontWeight: 700, fontSize: '0.87rem', color: textPrimary }}>₹{item.amount?.toLocaleString('en-IN')}</TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                          <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#22c55e' }} />
-                          <Typography sx={{ fontSize: '0.82rem', color: '#22c55e', fontWeight: 600 }}>Paid</Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Button size="small" startIcon={<Download size={12} />}
-                          sx={{ textTransform: 'none', fontSize: '0.75rem', fontWeight: 600, color: textSecondary, '&:hover': { color: '#6366f1' } }}>
-                          PDF
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Box>
-          </Box>
-        )}
-
-      </Container>
-    </Box>
+          {activeTab === 'history' && (
+            <motion.div key="history" initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-8 }} transition={{ duration:0.3 }}>
+              <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:20, overflow:'hidden' }}>
+                <div style={{ padding:'1rem 1.25rem', borderBottom:'1px solid rgba(255,255,255,0.06)', display:'flex', alignItems:'center', gap:8 }}>
+                  <TrendingUp size={16} color="#6366f1" />
+                  <span style={{ fontWeight:800, fontSize:'0.9rem', color:'#f0f0f5' }}>Transaction Ledger</span>
+                  <span style={{ marginLeft:'auto', background:'rgba(99,102,241,0.15)', border:'1px solid rgba(99,102,241,0.25)', borderRadius:8, padding:'2px 10px', fontSize:'0.68rem', fontWeight:800, color:'#818cf8' }}>{history.length} records</span>
+                </div>
+                {history.length === 0 ? (
+                  <div style={{ padding:'3rem', textAlign:'center', color:'rgba(255,255,255,0.3)' }}>
+                    <CreditCard size={32} style={{ marginBottom:12, opacity:0.4 }} />
+                    <div style={{ fontSize:'0.875rem', fontWeight:600 }}>No transactions yet</div>
+                    <div style={{ fontSize:'0.78rem', marginTop:4 }}>Upgrade your plan to see payment history.</div>
+                  </div>
+                ) : (
+                  history.map(item => <TxRow key={item.id} item={item} />)
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
   );
 }

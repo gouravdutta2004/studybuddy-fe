@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { NeonShader } from '../components/ui/NeonShader';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -84,14 +85,16 @@ export default function Login() {
       minHeight: '100vh', display: 'flex', bgcolor: '#07080f',
       position: 'relative', overflow: 'hidden',
     }}>
-      {/* Ambient glows */}
-      <Box sx={{ position: 'absolute', top: '10%', right: '15%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle,rgba(124,58,237,0.18),transparent 70%)', pointerEvents: 'none' }} />
-      <Box sx={{ position: 'absolute', bottom: '10%', left: '5%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle,rgba(16,185,129,0.07),transparent 70%)', pointerEvents: 'none' }} />
-      {/* grid */}
-      <Box sx={{ position: 'fixed', inset: 0, backgroundImage: 'linear-gradient(rgba(124,58,237,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(124,58,237,0.03) 1px,transparent 1px)', backgroundSize: '60px 60px', pointerEvents: 'none', zIndex: 0 }} />
+      {/* ── NeonShader fullscreen background ── */}
+      <Box sx={{ position: 'fixed', inset: 0, zIndex: 0 }}>
+        <NeonShader speed={0.7} />
+      </Box>
+
+      {/* ── Dark overlay so text & form stay readable ── */}
+      <Box sx={{ position: 'fixed', inset: 0, zIndex: 1, background: 'rgba(7,8,15,0.82)', backdropFilter: 'blur(1px)' }} />
 
       {/* LEFT PANEL */}
-      <Box sx={{ display: { xs: 'none', lg: 'flex' }, flex: '0 0 44%', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 6, position: 'relative', zIndex: 1, borderRight: '1px solid rgba(255,255,255,0.04)' }}>
+      <Box sx={{ display: { xs: 'none', lg: 'flex' }, flex: '0 0 44%', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 6, position: 'relative', zIndex: 2, borderRight: '1px solid rgba(255,255,255,0.06)' }}>
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
           <Box sx={{ textAlign: 'center', maxWidth: 380 }}>
             <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
@@ -119,7 +122,7 @@ export default function Login() {
       </Box>
 
       {/* RIGHT PANEL — form */}
-      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2, position: 'relative', zIndex: 1 }}>
+      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2, position: 'relative', zIndex: 2 }}>
         <Container maxWidth="xs">
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
 

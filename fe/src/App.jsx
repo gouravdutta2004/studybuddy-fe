@@ -46,6 +46,7 @@ import LiveRooms from './pages/LiveRooms';
 
 
 import AIAssistantWidget from './components/AIAssistantWidget';
+import WhobeeChat from './components/WhobeeChat';
 import GlobalMessengerWidget from './components/GlobalMessengerWidget';
 import SupportWidget from './components/SupportWidget';
 import CustomCursor from './components/CustomCursor';
@@ -153,6 +154,7 @@ const Layout = ({ children }) => {
 
       {/* Global widgets */}
       <AIAssistantWidget />
+      <WhobeeChat />
       <GlobalMessengerWidget />
       <SupportWidget />
     </Box>

@@ -20,11 +20,12 @@ const STYLES = [
 ];
 const QUICK_SUBJECTS = ['Mathematics', 'Physics', 'CS', 'Chemistry', 'Biology', 'Economics', 'History', 'Design'];
 
-const STEP_COLORS = ['#f97316', '#f59e0b', '#10b981'];
+const STEP_COLORS = ['#f97316', '#f59e0b', '#10b981', '#6366f1'];
 const STEP_META = [
   { label: 'Subjects', icon: BookOpen, tagline: 'Feed the flame', sub: 'What fuels your learning?' },
   { label: 'Schedule', icon: Calendar, tagline: 'Own the clock', sub: 'When do you study best?' },
   { label: 'Style', icon: Lightbulb, tagline: 'Ignite the squad', sub: 'How do you learn?' },
+  { label: 'Psyche', icon: Sparkles, tagline: 'Mind Map', sub: 'Deep Cognitive Traits' },
 ];
 
 function FlameArt({ step }) {
@@ -61,6 +62,10 @@ export default function Onboarding() {
   const [preferOnline, setPreferOnline] = useState(true);
   const [studyStyle, setStudyStyle] = useState('Mixed');
 
+  const [focusSpan, setFocusSpan] = useState('POMODORO');
+  const [learningType, setLearningType] = useState('VISUAL');
+  const [energyPeak, setEnergyPeak] = useState('MORNING');
+
   const addSubject = () => {
     const trimmed = subjects.trim();
     if (!trimmed) return;
@@ -86,7 +91,11 @@ export default function Onboarding() {
     }
     setLoading(true);
     try {
-      const res = await api.put('/users/profile', { subjects: allSubs, availability, studyStyle, preferOnline });
+      const payload = {
+        subjects: allSubs, availability, studyStyle, preferOnline,
+        studyProfile: { focusSpan, learningType, energyPeak }
+      };
+      const res = await api.put('/users/profile', payload);
       updateUser(res.data);
       toast.success('🔥 Profile ignited! Welcome to the network.');
       navigate('/dashboard');
@@ -121,7 +130,7 @@ export default function Onboarding() {
             <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, px: 2, py: 0.6, borderRadius: 9999, bgcolor: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', mb: 2 }}>
               <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: color, animation: 'sbpulse 2s infinite' }} />
               <style>{`@keyframes sbpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.5)}}`}</style>
-              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color, letterSpacing: '0.15em', textTransform: 'uppercase' }}>Step 3 of 3 — Ignite</Typography>
+              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color, letterSpacing: '0.15em', textTransform: 'uppercase' }}>Step {step} of 4 — Ignite</Typography>
             </Box>
 
             <FlameArt step={step} />
@@ -302,11 +311,55 @@ export default function Onboarding() {
 
                   <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Button onClick={() => setStep(2)} sx={{ color: 'rgba(255,255,255,0.45)', textTransform: 'none', fontWeight: 700 }}>← Back</Button>
+                    <Button variant="contained" onClick={() => setStep(4)} endIcon={<ChevronRight size={18} />}
+                      sx={{ borderRadius: '14px', px: 3.5, py: 1.4, fontWeight: 800, textTransform: 'none', fontSize: '0.95rem', bgcolor: color, '&:hover': { bgcolor: STEP_COLORS[3] } }}>
+                      Continue
+                    </Button>
+                  </Box>
+                </Box>
+              )}
+
+              {/* ── STEP 4 — Cognitive Profile ── */}
+              {step === 4 && (
+                <Box>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.88rem', mb: 2.5, lineHeight: 1.6 }}>
+                    These cognitive traits power our next-level AI matching.
+                  </Typography>
+
+                  <Typography sx={{ fontWeight: 700, color: 'white', fontSize: '0.85rem', mb: 1 }}>Focus Span</Typography>
+                  <Box sx={{ display: 'flex', gap: 1.5, mb: 2.5 }}>
+                    {[{ id: 'POMODORO', l: 'Pomodoro' }, { id: 'DEEP_WORK', l: 'Deep Work' }].map(t => (
+                      <Box key={t.id} onClick={() => setFocusSpan(t.id)} sx={{ flex: 1, p: 1.5, borderRadius: '12px', border: '2px solid', cursor: 'pointer', textAlign: 'center', borderColor: focusSpan === t.id ? color : 'rgba(255,255,255,0.08)', bgcolor: focusSpan === t.id ? `${color}15` : 'rgba(255,255,255,0.02)', '&:hover': { borderColor: color } }}>
+                        <Typography sx={{ fontWeight: 700, color: focusSpan === t.id ? color : 'white', fontSize: '0.85rem' }}>{t.l}</Typography>
+                      </Box>
+                    ))}
+                  </Box>
+
+                  <Typography sx={{ fontWeight: 700, color: 'white', fontSize: '0.85rem', mb: 1 }}>Learning Type</Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mb: 2.5, flexWrap: 'wrap' }}>
+                    {[{ id: 'VISUAL', l: 'Visual' }, { id: 'THEORY', l: 'Theory' }, { id: 'PROBLEM_SOLVING', l: 'Problem Solving' }].map(t => (
+                      <Box key={t.id} onClick={() => setLearningType(t.id)} sx={{ flex: 1, minWidth: '30%', p: 1.5, borderRadius: '12px', border: '2px solid', cursor: 'pointer', textAlign: 'center', borderColor: learningType === t.id ? color : 'rgba(255,255,255,0.08)', bgcolor: learningType === t.id ? `${color}15` : 'rgba(255,255,255,0.02)', '&:hover': { borderColor: color } }}>
+                        <Typography sx={{ fontWeight: 700, color: learningType === t.id ? color : 'white', fontSize: '0.8rem' }}>{t.l}</Typography>
+                      </Box>
+                    ))}
+                  </Box>
+
+                  <Typography sx={{ fontWeight: 700, color: 'white', fontSize: '0.85rem', mb: 1 }}>Energy Peak</Typography>
+                  <Box sx={{ display: 'flex', gap: 1.5, mb: 3 }}>
+                    {[{ id: 'MORNING', l: '🌅 Morning Peak' }, { id: 'NIGHT_OWL', l: '🦉 Night Owl' }].map(t => (
+                      <Box key={t.id} onClick={() => setEnergyPeak(t.id)} sx={{ flex: 1, p: 1.5, borderRadius: '12px', border: '2px solid', cursor: 'pointer', textAlign: 'center', borderColor: energyPeak === t.id ? color : 'rgba(255,255,255,0.08)', bgcolor: energyPeak === t.id ? `${color}15` : 'rgba(255,255,255,0.02)', '&:hover': { borderColor: color } }}>
+                        <Typography sx={{ fontWeight: 700, color: energyPeak === t.id ? color : 'white', fontSize: '0.85rem' }}>{t.l}</Typography>
+                      </Box>
+                    ))}
+                  </Box>
+
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Button onClick={() => setStep(3)} sx={{ color: 'rgba(255,255,255,0.45)', textTransform: 'none', fontWeight: 700 }}>← Back</Button>
                     <Button variant="contained" disabled={loading} onClick={handleFinish} endIcon={<Sparkles size={18} />}
                       sx={{ borderRadius: '14px', px: 3.5, py: 1.4, fontWeight: 800, textTransform: 'none', fontSize: '0.95rem',
-                        bgcolor: '#10b981', boxShadow: '0 8px 24px rgba(16,185,129,0.3)',
-                        '&:hover': { bgcolor: '#059669' }, '&.Mui-disabled': { opacity: 0.4 } }}>
-                      {loading ? 'Igniting...' : '🔥 Ignite My Profile'}
+                        bgcolor: color, boxShadow: `0 8px 24px ${color}50`,
+                        '&:hover': { filter: 'brightness(1.1)' }, '&.Mui-disabled': { opacity: 0.4 } }}>
+                      {loading ? 'Crunching...' : '🔥 Complete Setup'}
                     </Button>
                   </Box>
                 </Box>

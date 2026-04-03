@@ -8,7 +8,10 @@ import {
 } from 'lucide-react';
 
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 import { io } from 'socket.io-client';
+import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button } from '@mui/material';
+import { LifeBuoy } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import logoImg from '../assets/logo.png';
@@ -126,27 +129,40 @@ function RailItem({ to, icon: Icon, label, color, isActive, expanded, unread, on
 /* ══════════════ RAIL SIDEBAR ══════════════ */
 export default function Sidebar({ mobileOpen = false, setMobileOpen = () => {} }) {
   const { user } = useAuth();
+  const { socket } = useSocket();
   const location = useLocation();
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const [expanded, setExpanded] = useState(false);
   const [unreadCount, setUnreadCount] = React.useState(0);
+  
+  // SOS State
+  const [sosModal, setSosModal] = useState(false);
+  const [sosSubject, setSosSubject] = useState('');
+  const [sosTopic, setSosTopic] = useState('');
 
   React.useEffect(() => {
-    if (!user) return;
-    const socket = io(import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5001', { withCredentials: true });
-    socket.emit('setup', user._id);
-    socket.on('message_received', (msg) => {
+    if (!socket || !user) return;
+    const msgHandler = (msg) => {
       if (!location.pathname.startsWith('/messages')) {
         setUnreadCount(p => p + 1);
-        toast(`New message from ${msg.sender?.name || 'someone'}`, {
-          icon: '💬',
-          style: { borderRadius: '100px', background: '#1e1b4b', color: '#fff', fontWeight: 'bold' }
-        });
       }
+    };
+    socket.on('message_received', msgHandler);
+    return () => { socket.off('message_received', msgHandler); };
+  }, [socket, user, location.pathname]);
+
+  const handleTriggerSOS = () => {
+    if (!sosSubject.trim()) return toast.error('Subject is required');
+    socket.emit('trigger_sos', {
+      subject: sosSubject.trim(),
+      topic: sosTopic.trim(),
+      userId: user._id,
+      userName: user.name
     });
-    return () => { socket.off('message_received'); socket.disconnect(); };
-  }, [user?._id, location.pathname]);
+    toast.success('SOS Beacon deployed! Searching for experts...');
+    setSosModal(false);
+  };
 
   const railWidth = expanded ? 220 : 72;
 
@@ -234,6 +250,35 @@ export default function Sidebar({ mobileOpen = false, setMobileOpen = () => {} }
         )}
       </Box>
 
+      {/* ── SOS Panic Button ── */}
+      <Box sx={{ p: 1, flexShrink: 0, mt: 'auto' }}>
+        <Tooltip title={!expanded ? 'Trigger SOS' : ''} placement="right" arrow>
+          <Box
+            onClick={() => setSosModal(true)}
+            sx={{
+              display: 'flex', alignItems: 'center', gap: expanded ? 1.5 : 0,
+              justifyContent: expanded ? 'flex-start' : 'center',
+              px: expanded ? 1.5 : 0, height: 44, borderRadius: '12px',
+              cursor: 'pointer', overflow: 'hidden',
+              bgcolor: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)',
+              transition: 'all 0.25s',
+              animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              '&:hover': { bgcolor: 'rgba(239,68,68,0.25)', boxShadow: '0 0 16px rgba(239,68,68,0.4)' },
+              '@keyframes pulse': { '0%, 100%': { opacity: 1 }, '50%': { opacity: 0.6 } }
+            }}
+          >
+            <LifeBuoy size={18} color="#ef4444" style={{ flexShrink: 0 }} />
+            <AnimatePresence>
+              {expanded && (
+                <motion.div initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }}>
+                  <Box sx={{ fontSize: '0.8rem', fontWeight: 800, color: '#f87171', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: 1 }}>I'm Stuck (SOS)</Box>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Box>
+        </Tooltip>
+      </Box>
+
       {/* ── PRO upgrade ── */}
       {!user?.isAdmin && user?.role !== 'ORG_ADMIN' && (
         <Box sx={{ p: 1, flexShrink: 0, borderTop: '1px solid', borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)' }}>
@@ -265,9 +310,30 @@ export default function Sidebar({ mobileOpen = false, setMobileOpen = () => {} }
     </Box>
   );
 
-  if (mobileOpen) return RailContent;
-
   return (
+    <>
+    {/* SOS Dialog */}
+    <Dialog open={sosModal} onClose={() => setSosModal(false)}
+      PaperProps={{ style: { backgroundColor: isDark ? '#040612' : '#ffffff', color: isDark ? 'white' : 'black', borderRadius: 16 } }}>
+      <DialogTitle sx={{ fontWeight: 900, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 1 }}>
+        <LifeBuoy /> Emergency Broadcast
+      </DialogTitle>
+      <DialogContent>
+          <Box sx={{ fontSize: '0.85rem', mb: 3, color: 'text.secondary' }}>
+            Instantly ping all online experts for help. Provide a subject and brief description of where you are stuck.
+          </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField fullWidth label="Subject (e.g. Calculus)" size="small" value={sosSubject} onChange={e => setSosSubject(e.target.value)} sx={{ input: { color: isDark ? 'white' : 'inherit' } }} />
+            <TextField fullWidth label="What are you stuck on?" size="small" value={sosTopic} onChange={e => setSosTopic(e.target.value)} sx={{ input: { color: isDark ? 'white' : 'inherit' } }} />
+          </Box>
+      </DialogContent>
+      <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setSosModal(false)} color="inherit" sx={{ fontWeight: 700 }}>Cancel</Button>
+          <Button onClick={handleTriggerSOS} variant="contained" sx={{ bgcolor: '#ef4444', fontWeight: 800, '&:hover': { bgcolor: '#dc2626' } }}>Deploy SOS</Button>
+      </DialogActions>
+    </Dialog>
+
+  {mobileOpen ? RailContent : (
     <Box sx={{
       display: { xs: 'none', md: 'flex' },
       height: '100%',
@@ -278,5 +344,7 @@ export default function Sidebar({ mobileOpen = false, setMobileOpen = () => {} }
     }}>
       {RailContent}
     </Box>
+  )}
+  </>
   );
 }
