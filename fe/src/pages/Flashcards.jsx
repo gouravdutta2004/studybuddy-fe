@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import api from '../api/axios';
 import {
   Box, Typography, TextField, Button, CircularProgress,
@@ -208,6 +208,7 @@ function FlipCard({ card, index, total, onRate, rated }) {
   return (
     <Box sx={{ perspective: '1200px', width: '100%', maxWidth: 580, mx: 'auto', userSelect: 'none' }}>
       <Box
+        id="flashcard-active"
         onClick={() => setFlipped(f => !f)}
         sx={{
           position: 'relative', width: '100%', height: flipped && card ? 380 : 300,
@@ -395,8 +396,16 @@ export default function Flashcards() {
     if (!generated || mode !== 'flashcards' || sessionComplete) return;
     const handleKey = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      if (e.code === 'ArrowRight') setCurrentCard(c => Math.min(flashcards.length - 1, c + 1));
-      if (e.code === 'ArrowLeft') setCurrentCard(c => Math.max(0, c - 1));
+      if (e.code === 'ArrowRight') {
+        setCurrentCard(c => Math.min(flashcards.length - 1, c + 1));
+      } else if (e.code === 'ArrowLeft') {
+        setCurrentCard(c => Math.max(0, c - 1));
+      } else if (e.code === 'Space') {
+        e.preventDefault();
+        // Trigger flip by clicking the active card element
+        const cardEl = document.getElementById('flashcard-active');
+        if (cardEl) cardEl.click();
+      }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);

@@ -92,7 +92,7 @@ function HUDCorner({ flip = false }) {
 }
 
 /* ─── XP Orb Ring ─── */
-function XPRing({ pct, tier }) {
+function XPRing({ pct, tier, level }) {
   const r = 52;
   const circ = 2 * Math.PI * r;
   const dash = (pct / 100) * circ;
@@ -120,7 +120,7 @@ function XPRing({ pct, tier }) {
       <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <Typography fontWeight={900} fontSize="0.55rem" color={tier.color} sx={{ textTransform: 'uppercase', letterSpacing: 2, mb: 0.25 }}>LEVEL</Typography>
         <Typography fontWeight={900} fontSize="2.5rem" color="white" lineHeight={1} fontFamily="'Courier New', monospace">
-          {'{LVL}'}
+          {level}
         </Typography>
       </Box>
     </Box>

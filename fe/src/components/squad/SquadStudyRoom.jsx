@@ -141,7 +141,7 @@ export default function SquadStudyRoom({ groupId, name }) {
                   <Box sx={{
                     p: 3, borderRadius: '16px',
                     bgcolor: cardBg,
-                    border: '1px solid', borderColor,
+                    border: '1px solid', borderColor: borderC,
                     boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.2)' : '0 4px 16px rgba(0,0,0,0.05)',
                     height: '100%',
                     position: 'relative', overflow: 'hidden',
@@ -185,7 +185,7 @@ export default function SquadStudyRoom({ groupId, name }) {
         <Box sx={{
           display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2,
           p: 3, borderRadius: '16px', bgcolor: cardBg,
-          border: '1px solid', borderColor,
+          border: '1px solid', borderColor: borderC,
           boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.2)' : '0 4px 16px rgba(0,0,0,0.05)',
         }}>
           {[

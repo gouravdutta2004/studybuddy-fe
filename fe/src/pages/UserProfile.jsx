@@ -112,7 +112,7 @@ function BadgeCard({ name, earned }) {
 /* ─── Social Accounts Grid ─── */
 const SOCIAL_PLATFORMS = [
   { key: 'linkedin',  label: 'LinkedIn',  Icon: Linkedin,  color: '#0a66c2', bg: 'rgba(10,102,194,0.1)',   href: (v) => `https://linkedin.com/in/${v}` },
-  { key: 'github',    label: 'GitHub',    Icon: Github,    color: '#e5e7eb', bg: 'rgba(255,255,255,0.07)', href: (v) => `https://github.com/${v}` },
+  { key: 'github',    label: 'GitHub',    Icon: Github,    color: '#333',    bg: 'rgba(51,51,51,0.1)',     href: (v) => `https://github.com/${v}` },
   { key: 'twitter',   label: 'X (Twitter)', Icon: Twitter, color: '#1da1f2', bg: 'rgba(29,161,242,0.1)',  href: (v) => `https://x.com/${v}` },
   { key: 'instagram', label: 'Instagram', Icon: Instagram, color: '#e1306c', bg: 'rgba(225,48,108,0.1)',  href: (v) => `https://instagram.com/${v}` },
   { key: 'facebook',  label: 'Facebook',  Icon: Facebook,  color: '#1877f2', bg: 'rgba(24,119,242,0.1)',  href: (v) => `https://facebook.com/${v}` },
@@ -179,15 +179,20 @@ function SocialAccountsGrid({ socialLinks = {}, isDark }) {
                 }} />
               )}
 
-              <Icon size={24} color={isConnected ? color : (isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)')} />
+              <Icon
+                size={24}
+                color={isConnected
+                  ? (key === 'github' ? (isDark ? '#e5e7eb' : '#333') : color)
+                  : (isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)')}
+              />
               <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: isConnected ? (isDark ? 'white' : '#0f172a') : 'text.disabled', lineHeight: 1 }}>
                 {label}
               </Typography>
-              <Typography sx={{ fontSize: '0.6rem', color: isConnected ? color : 'text.disabled', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box component="span" sx={{ fontSize: '0.6rem', color: isConnected ? color : 'text.disabled', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}>
                 {isConnected ? (
                   <><ExternalLink size={9} />@{socialLinks[key].slice(0, 12)}{socialLinks[key].length > 12 ? '…' : ''}</>
                 ) : 'Not connected'}
-              </Typography>
+              </Box>
             </Box>
           );
         })}
