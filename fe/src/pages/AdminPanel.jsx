@@ -149,6 +149,9 @@ export default function AdminPanel() {
   const [auditLogs, setAuditLogs] = useState([]);
   const [reports, setReports] = useState([]);
   const [flaggedContent, setFlaggedContent] = useState([]);
+  const [shadowBannedUsers, setShadowBannedUsers] = useState([]);
+  const [activeModerationSubTab, setActiveModerationSubTab] = useState('reports');
+
   const [selectedUserIds, setSelectedUserIds] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
   const [openBadgeDialog, setOpenBadgeDialog] = useState(false);
@@ -248,7 +251,7 @@ export default function AdminPanel() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [userRes, connRes, subRes, confRes, dashRes, growthRes, sessRes, healthRes, reportsRes, auditRes, flaggedRes, lbRes, orgsRes, pendingRes, feedbackRes, squadsRes, questsRes] = await Promise.all([
+      const [userRes, connRes, subRes, confRes, dashRes, growthRes, sessRes, healthRes, reportsRes, auditRes, flaggedRes, lbRes, orgsRes, pendingRes, feedbackRes, squadsRes, questsRes, shadowBannedRes] = await Promise.all([
         api.get('/admin/users'), api.get('/admin/connections'), api.get('/admin/subjects'), api.get('/settings').catch(() => ({ data: {} })),
         api.get('/admin/analytics/dashboard').catch(() => ({ data: {} })), api.get('/admin/analytics/growth').catch(() => ({ data: [] })),
         api.get('/admin/analytics/sessions').catch(() => ({ data: [] })), api.get('/admin/health').catch(() => ({ data: {} })),
@@ -258,7 +261,8 @@ export default function AdminPanel() {
         api.get('/admin/pending-users/global').catch(() => ({ data: [] })),
         api.get('/admin/feedback').catch(() => ({ data: [] })),
         api.get('/admin/squads').catch(() => ({ data: [] })),
-        api.get('/admin/gamification/quests').catch(() => ({ data: [] }))
+        api.get('/admin/gamification/quests').catch(() => ({ data: [] })),
+        api.get('/admin/shadowbanned').catch(() => ({ data: [] })),
       ]);
       setUsers(userRes.data); setConnections(connRes.data); setSubjects(subRes.data);
       if (confRes.data && Object.keys(confRes.data).length > 0) setSiteConfig(confRes.data);
@@ -272,6 +276,7 @@ export default function AdminPanel() {
       setFeedback(feedbackRes.data || []);
       setSquads(squadsRes.data || []);
       setQuests(questsRes.data || []);
+      setShadowBannedUsers(shadowBannedRes.data || []);
     } catch { toast.error('Failed to load dashboard metrics'); }
     finally { setLoading(false); }
   };
@@ -334,6 +339,15 @@ export default function AdminPanel() {
   const updateFeedback = async (id, newStatus) => {
     try { await api.put(`/admin/reports/${id}`, { status: newStatus }); toast.success(`Report marked ${newStatus}`); fetchData(); }
     catch (err) { toast.error('Update failed'); }
+  };
+
+  const handleLiftBan = async (userId, userName) => {
+    if (!window.confirm(`Lift shadowban and reset all strikes for ${userName}? This will restore their platform access.`)) return;
+    try {
+      await api.put(`/admin/users/${userId}/lift-ban`);
+      toast.success(`✅ Shadowban lifted for ${userName}. Strikes reset to 0.`);
+      fetchData();
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed to lift ban'); }
   };
 
   const updatePlatformFeedback = async (id, newStatus) => {
@@ -1331,78 +1345,245 @@ export default function AdminPanel() {
               </Box>
             )}
 
-            {/* Moderation Hub (Feedback) */}
+            {/* ── Trust & Safety Dashboard ── */}
             {activeTab === 'feedback' && (
               <Box component={motion.div} variants={fadeUpSpring}>
+                {/* Header KPIs */}
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  {[
+                    { label: 'Pending Reports',    value: reports.filter(r => r.status === 'PENDING').length,   color: C.red,    icon: Shield },
+                    { label: 'Reviewed Reports',   value: reports.filter(r => r.status === 'REVIEWED').length, color: C.green,  icon: CheckCircle },
+                    { label: 'Shadowbanned Users', value: shadowBannedUsers.length,                              color: C.amber,  icon: Ban },
+                    { label: 'Total Reports Filed',value: reports.length,                                        color: C.indigo, icon: MessageSquare },
+                  ].map((s, i) => (
+                    <Grid item xs={6} sm={3} key={i}>
+                      <KpiCard {...s} />
+                    </Grid>
+                  ))}
+                </Grid>
+
                 <TiltCard sx={{ p: 4 }}>
-                  <Typography variant="h5" fontWeight={900} mb={3} display="flex" alignItems="center" gap={1.5} color="white"><Shield color="#f59e0b" size={28} /> Moderation Matrix</Typography>
-                  <Tabs value={activeModerationTab} onChange={(e, val) => setActiveModerationTab(val)} sx={{ mb: 4, '& .MuiTabs-indicator': { bgcolor: '#818cf8', height: 3, borderRadius: 3 }, '& .MuiTab-root': { color: 'rgba(255,255,255,0.5)', fontWeight: 800 }, '& .Mui-selected': { color: 'white !important' } }}>
-                    <Tab label="User Reports" value="reports" />
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                    <Box sx={{ p: 1, bgcolor: `${C.red}18`, borderRadius: '10px', border: `1px solid ${C.red}30` }}><Shield size={20} color={C.red} /></Box>
+                    <Typography sx={{ fontFamily: C.mono, fontWeight: 800, fontSize: '1.1rem', letterSpacing: 0.5 }}>Trust & Safety Command Centre</Typography>
+                    <Chip size="small" label={`${reports.filter(r => r.status === 'PENDING').length} PENDING`} sx={{ ml: 'auto', bgcolor: `${C.red}18`, color: C.red, fontFamily: C.mono, fontWeight: 800, border: `1px solid ${C.red}30` }} />
+                  </Box>
+
+                  <Tabs
+                    value={activeModerationSubTab}
+                    onChange={(_, v) => setActiveModerationSubTab(v)}
+                    sx={{ mb: 3, '& .MuiTabs-indicator': { bgcolor: C.red, height: 3, borderRadius: 3 }, '& .MuiTab-root': { color: C.muted, fontWeight: 800, fontFamily: C.mono, fontSize: '0.72rem', letterSpacing: 1 }, '& .Mui-selected': { color: 'white !important' } }}
+                  >
+                    <Tab label={`Reports (${reports.filter(r=>r.status==='PENDING').length})`} value="reports" />
+                    <Tab label={`Shadowbanned (${shadowBannedUsers.length})`} value="shadowbanned" />
                     <Tab label="Platform Feedback" value="feedback" />
-                    <Tab label="Auto-Flagged Content" value="flagged" />
+                    <Tab label="Auto-Flagged" value="flagged" />
                   </Tabs>
-                  
-                  <TableContainer>
-                    <Table sx={{ '& .MuiTableCell-root': { borderColor: 'rgba(255,255,255,0.05)', color: 'white' } }}>
-                      <TableHead>
-                        <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.1)' }}>
-                          <TableCell><Typography fontWeight={800} color="rgba(255,255,255,0.5)">Entity/Reporter</Typography></TableCell>
-                          <TableCell><Typography fontWeight={800} color="rgba(255,255,255,0.5)">Reason/Content</Typography></TableCell>
-                          <TableCell align="center"><Typography fontWeight={800} color="rgba(255,255,255,0.5)">Status</Typography></TableCell>
-                          <TableCell align="right"><Typography fontWeight={800} color="rgba(255,255,255,0.5)">Action</Typography></TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {activeModerationTab === 'reports' ? (
-                          reports.map(r => (
-                            <TableRow key={r._id} hover sx={{ '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' } }}>
-                              <TableCell>Reporter: {r.reporter?.name || 'Unknown'}<br/>Reported: {r.reportedUser?.name || 'Unknown'}</TableCell>
-                              <TableCell>{r.reason}: {r.description}</TableCell>
-                              <TableCell align="center"><Chip size="small" label={r.status} color={r.status === 'pending' ? 'warning' : 'success'} sx={{ fontWeight: 800 }} /></TableCell>
+
+                  {/* ── Reports Queue ── */}
+                  {activeModerationSubTab === 'reports' && (
+                    <TableContainer>
+                      <Table sx={{ '& .MuiTableCell-root': { borderColor: 'rgba(255,255,255,0.05)', color: 'white', py: 1.5 } }}>
+                        <TableHead>
+                          <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.15)' }}>
+                            <TableCell><Typography fontWeight={800} color={C.muted} fontSize="0.72rem" fontFamily={C.mono}>REPORTER → REPORTED</Typography></TableCell>
+                            <TableCell><Typography fontWeight={800} color={C.muted} fontSize="0.72rem" fontFamily={C.mono}>REASON</Typography></TableCell>
+                            <TableCell><Typography fontWeight={800} color={C.muted} fontSize="0.72rem" fontFamily={C.mono}>NOTES</Typography></TableCell>
+                            <TableCell align="center"><Typography fontWeight={800} color={C.muted} fontSize="0.72rem" fontFamily={C.mono}>STRIKES</Typography></TableCell>
+                            <TableCell align="center"><Typography fontWeight={800} color={C.muted} fontSize="0.72rem" fontFamily={C.mono}>STATUS</Typography></TableCell>
+                            <TableCell align="right"><Typography fontWeight={800} color={C.muted} fontSize="0.72rem" fontFamily={C.mono}>ACTIONS</Typography></TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {reports.length === 0 && (
+                            <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4, color: C.muted, fontFamily: C.mono, fontSize: '0.8rem' }}>✅ No reports filed yet.</TableCell></TableRow>
+                          )}
+                          {reports.map(r => {
+                            const reportedStrikes = r.reportedUserId?.trustStrikes || 0;
+                            const isBanned = r.reportedUserId?.isShadowBanned;
+                            const reasonColors = { HARASSMENT: C.red, NSFW: '#f97316', SPAM: C.amber, OFF_TOPIC: C.indigo };
+                            const reasonColor = reasonColors[r.reason] || C.muted;
+                            return (
+                              <TableRow key={r._id} hover sx={{ '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' } }}>
+                                <TableCell>
+                                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                    <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: C.muted }}>📤 {r.reporterId?.name || 'Unknown'}</Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <Typography sx={{ fontSize: '0.82rem', fontWeight: 800, color: 'white' }}>🎯 {r.reportedUserId?.name || 'Unknown'}</Typography>
+                                      {isBanned && <Chip size="small" label="SHADOWBANNED" sx={{ bgcolor: `${C.red}18`, color: C.red, fontFamily: C.mono, fontWeight: 900, fontSize: '0.58rem', height: 18, border: `1px solid ${C.red}35` }} />}
+                                    </Box>
+                                    <Typography sx={{ fontSize: '0.65rem', color: C.muted, fontFamily: C.mono }}>{r.sessionId?.title || 'No session context'}</Typography>
+                                    <Typography sx={{ fontSize: '0.62rem', color: C.muted }}>{new Date(r.createdAt).toLocaleString()}</Typography>
+                                  </Box>
+                                </TableCell>
+                                <TableCell>
+                                  <Chip size="small" label={r.reason || 'N/A'} sx={{ bgcolor: `${reasonColor}18`, color: reasonColor, fontFamily: C.mono, fontWeight: 800, fontSize: '0.65rem', border: `1px solid ${reasonColor}35` }} />
+                                </TableCell>
+                                <TableCell>
+                                  <Typography sx={{ fontSize: '0.75rem', color: C.muted, maxWidth: 200, wordBreak: 'break-word' }}>
+                                    {r.notes || <span style={{ opacity: 0.35, fontStyle: 'italic' }}>No notes</span>}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell align="center">
+                                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                                    <Typography sx={{ fontFamily: C.mono, fontWeight: 900, fontSize: '1rem', color: reportedStrikes >= 3 ? C.red : reportedStrikes >= 2 ? C.amber : C.green }}>
+                                      {reportedStrikes}/3
+                                    </Typography>
+                                    <Box sx={{ width: 60, height: 4, borderRadius: 4, bgcolor: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                                      <Box sx={{ height: '100%', borderRadius: 4, bgcolor: reportedStrikes >= 3 ? C.red : reportedStrikes >= 2 ? C.amber : C.green, width: `${Math.min((reportedStrikes / 3) * 100, 100)}%`, transition: 'width 0.5s' }} />
+                                    </Box>
+                                  </Box>
+                                </TableCell>
+                                <TableCell align="center">
+                                  <Chip size="small" label={r.status} sx={{ bgcolor: r.status === 'PENDING' ? `${C.amber}18` : `${C.green}18`, color: r.status === 'PENDING' ? C.amber : C.green, fontFamily: C.mono, fontWeight: 800, border: `1px solid ${r.status === 'PENDING' ? C.amber : C.green}35` }} />
+                                </TableCell>
+                                <TableCell align="right">
+                                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                                    {r.status === 'PENDING' && (
+                                      <Button size="small" variant="outlined" onClick={() => updateFeedback(r._id, 'REVIEWED')}
+                                        sx={{ fontFamily: C.mono, fontWeight: 800, fontSize: '0.65rem', borderColor: C.green, color: C.green, '&:hover': { borderColor: C.green, bgcolor: `${C.green}12` } }}>
+                                        ✓ Mark Reviewed
+                                      </Button>
+                                    )}
+                                    {r.reportedUserId?._id && r.reportedUserId?.isShadowBanned && (
+                                      <Button size="small" variant="outlined" onClick={() => handleLiftBan(r.reportedUserId._id, r.reportedUserId.name)}
+                                        sx={{ fontFamily: C.mono, fontWeight: 800, fontSize: '0.65rem', borderColor: C.indigo, color: C.indigo, '&:hover': { borderColor: C.indigo, bgcolor: `${C.indigo}12` } }}>
+                                        🔓 Lift Ban
+                                      </Button>
+                                    )}
+                                  </Box>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+
+                  {/* ── Shadowbanned Users ── */}
+                  {activeModerationSubTab === 'shadowbanned' && (
+                    <TableContainer>
+                      <Table sx={{ '& .MuiTableCell-root': { borderColor: 'rgba(255,255,255,0.05)', color: 'white', py: 1.5 } }}>
+                        <TableHead>
+                          <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.15)' }}>
+                            <TableCell><Typography fontWeight={800} color={C.muted} fontSize="0.72rem" fontFamily={C.mono}>USER</Typography></TableCell>
+                            <TableCell align="center"><Typography fontWeight={800} color={C.muted} fontSize="0.72rem" fontFamily={C.mono}>STRIKE COUNT</Typography></TableCell>
+                            <TableCell><Typography fontWeight={800} color={C.muted} fontSize="0.72rem" fontFamily={C.mono}>MEMBER SINCE</Typography></TableCell>
+                            <TableCell align="right"><Typography fontWeight={800} color={C.muted} fontSize="0.72rem" fontFamily={C.mono}>GOD-MODE ACTION</Typography></TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {shadowBannedUsers.length === 0 && (
+                            <TableRow><TableCell colSpan={4} align="center" sx={{ py: 4, color: C.muted, fontFamily: C.mono, fontSize: '0.8rem' }}>✅ No shadowbanned users — platform clean.</TableCell></TableRow>
+                          )}
+                          {shadowBannedUsers.map(u => (
+                            <TableRow key={u._id} hover sx={{ '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' } }}>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                  <Avatar src={u.avatar} sx={{ width: 34, height: 34, bgcolor: `${C.red}22`, border: `1px solid ${C.red}40` }} />
+                                  <Box>
+                                    <Typography sx={{ fontWeight: 800, fontSize: '0.84rem' }}>{u.name}</Typography>
+                                    <Typography sx={{ fontSize: '0.7rem', color: C.muted, fontFamily: C.mono }}>{u.email}</Typography>
+                                  </Box>
+                                  <Chip size="small" label="SHADOWBANNED" sx={{ bgcolor: `${C.red}18`, color: C.red, fontFamily: C.mono, fontWeight: 900, fontSize: '0.58rem', height: 18, border: `1px solid ${C.red}40` }} />
+                                </Box>
+                              </TableCell>
+                              <TableCell align="center">
+                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                                  <Typography sx={{ fontFamily: C.mono, fontWeight: 900, fontSize: '1.3rem', color: C.red }}>{u.trustStrikes}</Typography>
+                                  <Typography sx={{ fontFamily: C.mono, fontSize: '0.62rem', color: C.muted }}>strikes</Typography>
+                                  <Box sx={{ width: 80, height: 5, borderRadius: 4, bgcolor: `${C.red}18`, overflow: 'hidden' }}>
+                                    <Box sx={{ height: '100%', bgcolor: C.red, width: `${Math.min((u.trustStrikes / 5) * 100, 100)}%`, borderRadius: 4 }} />
+                                  </Box>
+                                </Box>
+                              </TableCell>
+                              <TableCell>
+                                <Typography sx={{ fontSize: '0.75rem', color: C.muted, fontFamily: C.mono }}>{new Date(u.createdAt).toLocaleDateString()}</Typography>
+                              </TableCell>
                               <TableCell align="right">
-                                {r.status === 'pending' && <Button size="small" variant="outlined" color="success" onClick={() => updateFeedback(r._id, 'resolved')}>Resolve</Button>}
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  onClick={() => handleLiftBan(u._id, u.name)}
+                                  sx={{ fontFamily: C.mono, fontWeight: 800, fontSize: '0.7rem', bgcolor: `${C.indigo}22`, color: C.indigo, border: `1px solid ${C.indigo}40`, boxShadow: 'none', '&:hover': { bgcolor: `${C.indigo}35`, boxShadow: `0 0 12px ${C.indigo}40` } }}
+                                >
+                                  🔓 Lift Shadowban & Reset Strikes
+                                </Button>
                               </TableCell>
                             </TableRow>
-                          ))
-                        ) : activeModerationTab === 'feedback' ? (
-                          feedback.map(f => (
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+
+                  {/* ── Platform Feedback ── */}
+                  {activeModerationSubTab === 'feedback' && (
+                    <TableContainer>
+                      <Table sx={{ '& .MuiTableCell-root': { borderColor: 'rgba(255,255,255,0.05)', color: 'white' } }}>
+                        <TableHead>
+                          <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.1)' }}>
+                            <TableCell><Typography fontWeight={800} color={C.muted} fontSize="0.72rem" fontFamily={C.mono}>USER</Typography></TableCell>
+                            <TableCell><Typography fontWeight={800} color={C.muted} fontSize="0.72rem" fontFamily={C.mono}>CONTENT</Typography></TableCell>
+                            <TableCell align="center"><Typography fontWeight={800} color={C.muted} fontSize="0.72rem" fontFamily={C.mono}>STATUS</Typography></TableCell>
+                            <TableCell align="right"><Typography fontWeight={800} color={C.muted} fontSize="0.72rem" fontFamily={C.mono}>ACTION</Typography></TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {feedback.map(f => (
                             <TableRow key={f._id} hover sx={{ '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' } }}>
                               <TableCell>
                                 <Typography variant="body2" fontWeight={800} color="white">{f.user?.name || 'Unknown'}</Typography>
-                                <Typography variant="caption" color="rgba(255,255,255,0.5)">{f.user?.email}</Typography>
+                                <Typography variant="caption" color={C.muted}>{f.user?.email}</Typography>
                               </TableCell>
                               <TableCell>
-                                <Chip size="small" label={f.type} sx={{ mb: 1, bgcolor: 'rgba(139, 92, 246, 0.2)', color: '#818cf8', fontWeight: 800 }} /><br/>
+                                <Chip size="small" label={f.type} sx={{ mb: 1, bgcolor: 'rgba(139,92,246,0.2)', color: '#818cf8', fontWeight: 800 }} /><br/>
                                 <Typography variant="body2">{f.content}</Typography>
                               </TableCell>
                               <TableCell align="center"><Chip size="small" label={f.status} color={f.status === 'Pending' ? 'warning' : 'success'} sx={{ fontWeight: 800 }} /></TableCell>
                               <TableCell align="right">
-                                {f.status === 'Pending' && <Button size="small" variant="contained" color="success" sx={{fontWeight: 800}} onClick={() => updatePlatformFeedback(f._id, 'Resolved')}>Resolve</Button>}
+                                {f.status === 'Pending' && <Button size="small" variant="contained" color="success" sx={{ fontWeight: 800 }} onClick={() => updatePlatformFeedback(f._id, 'Resolved')}>Resolve</Button>}
                               </TableCell>
                             </TableRow>
-                          ))
-                        ) : (
-                          flaggedContent.map(f => (
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+
+                  {/* ── Auto-Flagged Content ── */}
+                  {activeModerationSubTab === 'flagged' && (
+                    <TableContainer>
+                      <Table sx={{ '& .MuiTableCell-root': { borderColor: 'rgba(255,255,255,0.05)', color: 'white' } }}>
+                        <TableHead>
+                          <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.1)' }}>
+                            <TableCell><Typography fontWeight={800} color={C.muted} fontSize="0.72rem" fontFamily={C.mono}>USER</Typography></TableCell>
+                            <TableCell><Typography fontWeight={800} color={C.muted} fontSize="0.72rem" fontFamily={C.mono}>CONTENT</Typography></TableCell>
+                            <TableCell align="center"><Typography fontWeight={800} color={C.muted} fontSize="0.72rem" fontFamily={C.mono}>STATUS</Typography></TableCell>
+                            <TableCell align="right"><Typography fontWeight={800} color={C.muted} fontSize="0.72rem" fontFamily={C.mono}>ACTION</Typography></TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {flaggedContent.map(f => (
                             <TableRow key={f._id} hover sx={{ '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' } }}>
                               <TableCell>User: {f.user?.name || 'Unknown'}</TableCell>
                               <TableCell>{f.contentType}: {f.contentExcerpt}</TableCell>
                               <TableCell align="center"><Chip size="small" label={f.status} color={f.status === 'pending' ? 'warning' : 'success'} sx={{ fontWeight: 800 }} /></TableCell>
                               <TableCell align="right">
                                 <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                                  {f.status === 'pending' && (
-                                    <>
-                                      <Button size="small" variant="outlined" color="success" onClick={() => updateFlaggedItem(f._id, 'cleared', f.user?._id, null)}>Clear</Button>
-                                      <Button size="small" variant="contained" color="warning" onClick={() => updateFlaggedItem(f._id, 'actioned', f.user?._id, 'warn')}>Warn</Button>
-                                    </>
-                                  )}
+                                  {f.status === 'pending' && (<>
+                                    <Button size="small" variant="outlined" color="success" onClick={() => updateFlaggedItem(f._id, 'cleared', f.user?._id, null)}>Clear</Button>
+                                    <Button size="small" variant="contained" color="warning" onClick={() => updateFlaggedItem(f._id, 'actioned', f.user?._id, 'warn')}>Warn</Button>
+                                  </>)}
                                 </Box>
                               </TableCell>
                             </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
                 </TiltCard>
               </Box>
             )}
