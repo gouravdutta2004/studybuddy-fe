@@ -44,6 +44,8 @@ import Arcade from './pages/Arcade';
 import Flashcards from './pages/Flashcards';
 import Analytics from './pages/Analytics';
 import LiveRooms from './pages/LiveRooms';
+import PrivacySettings from './pages/PrivacySettings';
+
 
 
 
@@ -278,6 +280,7 @@ export default function App() {
               <Route path="/flashcards" element={<ProtectedRoute><Layout><Flashcards /></Layout></ProtectedRoute>} />
               <Route path="/analytics" element={<ProtectedRoute><Layout><Analytics /></Layout></ProtectedRoute>} />
               <Route path="/live" element={<ProtectedRoute><Layout><LiveRooms /></Layout></ProtectedRoute>} />
+              <Route path="/settings/privacy" element={<ProtectedRoute><PrivacySettings /></ProtectedRoute>} />
             </Routes>
           </BrowserRouter>
         </SocketProvider>

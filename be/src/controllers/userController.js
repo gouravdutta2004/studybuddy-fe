@@ -55,16 +55,18 @@ const updateProfile = async (req, res) => {
       }
     });
 
+    if (req.body.studyProfile !== undefined) {
+      user.studyProfile = { ...user.studyProfile, ...req.body.studyProfile };
+    }
+
     if (user.socialLinks) {
-      let count = 0;
-      if (user.socialLinks.github?.trim()) count++;
-      if (user.socialLinks.linkedin?.trim()) count++;
-      if (user.socialLinks.instagram?.trim()) count++;
+      const count = ['github', 'linkedin', 'instagram', 'twitter', 'facebook', 'youtube']
+        .filter(k => user.socialLinks[k]?.trim()).length;
       user.isVerified = count >= 2;
     }
 
     const updatedUser = await user.save();
-    res.json(updatedUser);
+    res.json(updatedUser.toJSON());
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -72,7 +74,8 @@ const updateProfile = async (req, res) => {
 
 const searchUsers = async (req, res) => {
   try {
-    const { subject, location, educationLevel, studyStyle, name } = req.query;
+    const { subject, location, educationLevel, studyStyle, name, _limit } = req.query;
+    const limit = _limit ? Math.min(parseInt(_limit, 10), 50) : 50;
     const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const query = { _id: { $ne: req.user._id }, isActive: true, isAdmin: { $ne: true } };
     if (subject) query.subjects = { $in: [new RegExp(escapeRegex(subject), 'i')] };
@@ -80,7 +83,7 @@ const searchUsers = async (req, res) => {
     if (educationLevel) query.educationLevel = educationLevel;
     if (studyStyle) query.studyStyle = studyStyle;
     if (name) query.name = new RegExp(escapeRegex(name), 'i');
-    const users = await User.find(query).select('-password').limit(50);
+    const users = await User.find(query).select('-password').limit(limit);
     res.json(users);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -90,7 +93,9 @@ const searchUsers = async (req, res) => {
 const getMatches = async (req, res) => {
   try {
     const me = await User.findById(req.user._id);
-    if (!me) return res.json([]); // Graceful fallback for Admin tokens accessing user matches
+    if (!me) return res.json([]); 
+    const isPro = me.subscription?.plan === 'pro' || me.subscription?.plan === 'squad';
+
     const excluded = [
       me._id, 
       ...me.connections, 
@@ -99,59 +104,81 @@ const getMatches = async (req, res) => {
       ...(me.skippedMatches || [])
     ];
     
-    // Fetch all active potential matches
     const query = {
-      _id: { $ne: req.user._id, $nin: excluded },
+      _id: { $nin: excluded },
       isActive: true,
-      isAdmin: { $ne: true }
+      isAdmin: { $ne: true },
+      isShadowBanned: { $ne: true }, // Trust & Safety: shadowbanned users never appear in discovery
+      'studyProfile.consistencyScore': { $gte: 40 } // Base rule: filter out terrible consistency
     };
 
-    // Walled Garden Entity Isolation
-    if (me.organization) {
-      query.organization = me.organization;
+    if (me.organization) query.organization = me.organization;
+
+    // Feature 4 Paywall: Exclude highly consistent users (80+) if on basic plan
+    if (!isPro) {
+      query['studyProfile.consistencyScore'] = { $gte: 40, $lte: 80 };
     }
 
-    const candidates = await User.find(query).select('-password').lean();
+    const { mode } = req.query; // ?mode=opposite
+    const myProfile = me.studyProfile || {};
+    
+    // Default zero values for missing traits
+    const myFocus = myProfile.focusSpan || '';
+    const myLearning = myProfile.learningType || '';
+    const myEnergy = myProfile.energyPeak || '';
 
-    // Scoring Engine
-    const scoredMatches = candidates.map(c => {
-      let score = 0;
+    // Aggregation Variables Based on Mode
+    const focusMatchScore = mode === 'opposite' 
+      ? { $cond: [{ $ne: ['$studyProfile.focusSpan', myFocus] }, 15, 0] } 
+      : { $cond: [{ $eq: ['$studyProfile.focusSpan', myFocus] }, 15, 0] };
+
+    const learningMatchScore = mode === 'opposite'
+      ? { $cond: [{ $ne: ['$studyProfile.learningType', myLearning] }, 15, 0] }
+      : { $cond: [{ $eq: ['$studyProfile.learningType', myLearning] }, 15, 0] };
+    
+    // Energy Peak is always exactly matched for points as requested
+    const energyMatchScore = { $cond: [{ $eq: ['$studyProfile.energyPeak', myEnergy] }, 20, 0] };
+
+    const pipeline = [
+      { $match: query },
+      { $addFields: {
+          psychScore: {
+            $add: [
+                { $cond: [{ $ne: [myFocus, ''] }, focusMatchScore, 0] },
+                { $cond: [{ $ne: [myLearning, ''] }, learningMatchScore, 0] },
+                { $cond: [{ $ne: [myEnergy, ''] }, energyMatchScore, 0] }
+            ]
+          }
+      }},
+      // Keep only matches with at least some psychological compatibility score
+      { $match: { psychScore: { $gt: 0 } } },
+      // Sort by the newly calculated score and consistency
+      { $sort: { psychScore: -1, 'studyProfile.consistencyScore': -1 } },
+      { $limit: isPro ? 20 : 3 }, // Feature 4 Paywall Limits
+      { $project: { password: 0 } }
+    ];
+
+    const aggregatedMatches = await User.aggregate(pipeline);
+
+    // Apply old logic points (subject/major) dynamically to final output
+    const finalScored = aggregatedMatches.map(c => {
+      let score = c.psychScore;
       
-      // +40% for shared subjects
       if (me.subjects && c.subjects && me.subjects.length > 0) {
         const sharedSubjects = me.subjects.filter(s => c.subjects.includes(s));
         if (sharedSubjects.length > 0) {
-           // Provide up to 40% proportional to shared subjects, or flat 40 if 100% matched
-           score += Math.min(40, (sharedSubjects.length / me.subjects.length) * 40);
+           score += Math.min(25, (sharedSubjects.length / me.subjects.length) * 25);
         }
       }
       
-      // +30% for same major
       if (me.major && c.major && me.major.trim() !== '' && me.major.toLowerCase().trim() === c.major.toLowerCase().trim()) {
-        score += 30;
-      }
-      
-      // +30% for overlapping schedules
-      if (me.availability && me.availability.length > 0 && c.availability && c.availability.length > 0) {
-        let overlapFound = false;
-        me.availability.forEach(mAvail => {
-            const hasMatch = c.availability.find(cAvail => cAvail.day === mAvail.day);
-            if (hasMatch) {
-              overlapFound = true;
-            }
-        });
-        if (overlapFound) score += 30;
+        score += 25;
       }
       
       return { ...c, matchScore: Math.round(score), matchPercentage: Math.round(score) };
-    });
+    }).sort((a,b) => b.matchPercentage - a.matchPercentage);
 
-    const filteredAndSorted = scoredMatches
-      .filter(c => c.matchScore > 0)
-      .sort((a, b) => b.matchScore - a.matchScore)
-      .slice(0, 20);
-
-    res.json(filteredAndSorted);
+    res.json(finalScored);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -435,65 +462,44 @@ const syncGithub = async (req, res) => {
   }
 };
 
-const updateLocation = async (req, res) => {
+// GPS functions removed — platform is now privacy-first (Semantic Nebula replaces location)
+
+// ── Shared Study Hours (Trust Threshold) ──────────────────────────────────────
+// Returns total minutes two users have studied together in completed sessions
+const getSharedStudyHours = async (req, res) => {
   try {
-    const { lat, lng } = req.body;
-    if (lat === undefined || lng === undefined) {
-      return res.status(400).json({ message: 'lat and lng are required' });
-    }
-    await User.findByIdAndUpdate(req.user._id, {
-      geoLocation: { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)] }
-    });
-    res.json({ message: 'Location updated' });
+    const Session = require('../models/Session');
+    const targetId = req.params.id;
+    const myId = req.user._id;
+
+    // Find all completed sessions where both users were participants or host
+    const sessions = await Session.find({
+      $and: [
+        {
+          $or: [
+            { participants: myId },
+            { host: myId },
+          ]
+        },
+        {
+          $or: [
+            { participants: targetId },
+            { host: targetId },
+          ]
+        },
+      ],
+      status: { $in: ['completed', 'ended', 'active'] },
+    }).select('duration').lean();
+
+    // Sum session durations (stored in minutes), convert to hours
+    const totalMinutes = sessions.reduce((sum, s) => sum + (s.duration || 0), 0);
+    const hours = parseFloat((totalMinutes / 60).toFixed(2));
+
+    res.json({ hours, sessionsCount: sessions.length });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
-
-const getNearbyUsers = async (req, res) => {
-  try {
-    const { lat, lng, radius = 10000 } = req.query; // radius in metres, default 10km
-    if (!lat || !lng) return res.status(400).json({ message: 'lat and lng are required' });
-
-    const latF = parseFloat(lat);
-    const lngF = parseFloat(lng);
-    const radiusM = parseInt(radius);
-
-    let users = [];
-
-    try {
-      // Primary: $near — requires 2dsphere index (fast, sorted by distance)
-      users = await User.find({
-        _id: { $ne: req.user._id },
-        isActive: true,
-        isAdmin: { $ne: true },
-        geoLocation: {
-          $near: {
-            $geometry: { type: 'Point', coordinates: [lngF, latF] },
-            $maxDistance: radiusM
-          }
-        }
-      }).select('name avatar subjects university level xp studyStyle geoLocation').limit(50);
-    } catch (geoErr) {
-      // Fallback: $geoWithin $centerSphere — works even without a 2dsphere index
-      console.warn('$near failed, falling back to $geoWithin:', geoErr.message);
-      const radiusRad = radiusM / 6378100; // convert metres to radians (Earth radius ~6378.1km)
-      users = await User.find({
-        _id: { $ne: req.user._id },
-        isActive: true,
-        isAdmin: { $ne: true },
-        'geoLocation.coordinates': {
-          $geoWithin: { $centerSphere: [[lngF, latF], radiusRad] }
-        }
-      }).select('name avatar subjects university level xp studyStyle geoLocation').limit(50);
-    }
-
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
 
 
 const getMyAnalytics = async (req, res) => {
@@ -572,4 +578,5 @@ const getMyAnalytics = async (req, res) => {
   }
 };
 
-module.exports = { getProfile, updateProfile, searchUsers, getMatches, skipMatch, sendRequest, acceptRequest, rejectRequest, getConnections, disconnectUser, submitFeedback, getPublicSubjects, getSupportAdmin, logStudy, getLeaderboard, getQuickPeek, syncGithub, updateLocation, getNearbyUsers, getMyProfile, getMyAnalytics };
+module.exports = { getProfile, updateProfile, searchUsers, getMatches, skipMatch, sendRequest, acceptRequest, rejectRequest, getConnections, disconnectUser, submitFeedback, getPublicSubjects, getSupportAdmin, logStudy, getLeaderboard, getQuickPeek, syncGithub, getSharedStudyHours, getMyProfile, getMyAnalytics };
+

@@ -29,10 +29,11 @@ const NAV = [
   { to: '/groups',       icon: Globe,          label: 'Squads',        color: '#059669' },
   { to: '/flashcards',   icon: BrainCircuit,   label: 'Flashcards',    color: '#8b5cf6' },
   { to: '/analytics',    icon: BarChart2,      label: 'Analytics',     color: '#06b6d4' },
-  { to: '/map',          icon: MapPin,         label: 'Nearby Map',    color: '#f97316' },
+  { to: '/map',          icon: MapPin,         label: 'Nebula Map',    color: '#f97316' },
   { to: '/messages',     icon: MessageCircle,  label: 'Messages',      color: '#818cf8' },
   { to: '/connections',  icon: Users,          label: 'Connections',   color: '#06b6d4' },
   { to: '/billing',      icon: CreditCard,     label: 'Billing',       color: '#f43f5e' },
+  { to: '/settings/privacy', icon: Shield,     label: 'Privacy',       color: '#10b981' },
 ];
 
 const SECTION_BREAKS = [3, 6, 11];

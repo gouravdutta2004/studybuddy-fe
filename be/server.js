@@ -42,9 +42,17 @@ app.use('/api/notifications', require('./src/routes/notifications'));
 app.use('/api/calendar', require('./src/routes/calendar'));
 app.use('/api/ai', require('./src/routes/ai'));
 app.use('/api/activity', require('./src/routes/activity'));
+app.use('/api/contracts', require('./src/routes/contracts'));
 app.use('/api/billing', require('./src/routes/billing.routes'));
+app.use('/api/billing', require('./src/routes/pricingRoutes'));
 app.use('/api/push', require('./src/routes/push'));
 app.use('/api/campus', require('./src/routes/campus'));
+app.use('/api/universities', require('./src/routes/universities'));
+app.use('/api/public/stats', require('./src/routes/platformStats'));
+app.use('/api/whobee', require('./src/routes/whobee')); // Whobee RAG AI — public, no auth required
+app.use('/api/kyc', require('./src/routes/kyc')); // Student KYC Verification
+app.use('/api/moderation', require('./src/routes/moderation')); // Trust & Safety — reports & shadowbans
+app.use('/api/compliance', require('./src/routes/compliance')); // GDPR/DPDP — data export & account deletion
 
 app.get('/api/health', (req, res) => res.json({ status: 'OK', message: 'StudyFriend API running' }));
 
@@ -85,6 +93,77 @@ io.on('connection', (socket) => {
 
   socket.on('new_message', (message) => {
     socket.to(message.receiver).emit('message_received', message);
+  });
+
+  // ── 1-on-1 WebRTC Calling (Messages) ──
+  // Track pending outbound calls: callerSocketId -> { userToCall, timer }
+  const pendingCalls = new Map();
+
+  socket.on('call_user', (data) => {
+    // data: { userToCall, signalData, from, callerInfo, isVideo }
+    // Emit incoming_call to receiver's personal room (joined on 'setup')
+    socket.to(data.userToCall).emit('incoming_call', {
+      signal: data.signalData,
+      from: data.from,         // caller's socket.id
+      callerInfo: data.callerInfo,
+      isVideo: data.isVideo,
+    });
+
+    // Phase 2: ACK timeout — if receiver doesn't ACK within 5s, caller sees 'unavailable'
+    const timeout = setTimeout(() => {
+      // Check if call is still pending (not yet ACKed)
+      if (pendingCalls.has(socket.id)) {
+        pendingCalls.delete(socket.id);
+        socket.emit('call_unavailable');
+      }
+    }, 5000);
+
+    pendingCalls.set(socket.id, { userToCall: data.userToCall, timeout });
+  });
+
+  // Receiver ACKs that they received the ring
+  socket.on('call_ack', (data) => {
+    // data: { to } — the caller's socket.id
+    // Find caller's pending call and clear their timeout
+    if (data.to) {
+      // Relay ack to the caller socket
+      io.to(data.to).emit('call_ack');
+      // Clear timeout on server if stored under caller socket id
+      if (pendingCalls.has(data.to)) {
+        clearTimeout(pendingCalls.get(data.to).timeout);
+        pendingCalls.delete(data.to);
+      }
+    }
+  });
+
+  // Caller cancels the call before it's answered
+  socket.on('cancel_call', (data) => {
+    if (data.userToCall) {
+      socket.to(data.userToCall).emit('call_ended');
+    }
+    if (pendingCalls.has(socket.id)) {
+      clearTimeout(pendingCalls.get(socket.id).timeout);
+      pendingCalls.delete(socket.id);
+    }
+  });
+
+  socket.on('answer_call', (data) => {
+    // data: { to (caller's socket.id), signal }
+    socket.to(data.to).emit('call_accepted', data.signal);
+  });
+
+  socket.on('reject_call', (data) => {
+    socket.to(data.to).emit('call_rejected');
+  });
+
+  socket.on('end_call', (data) => {
+    if (data.to) socket.to(data.to).emit('call_ended');
+  });
+
+  // Phase 1: Trickle ICE candidate relay
+  socket.on('ice_candidate', (data) => {
+    // data: { to, candidate }
+    socket.to(data.to).emit('ice_candidate', { candidate: data.candidate, from: socket.id });
   });
 
   socket.on('disconnect', () => {
@@ -145,6 +224,106 @@ io.on('connection', (socket) => {
     // Send current collab notes to new joiner
     const currentNotes = roomNotes.get(rId) || '';
     socket.emit('collab_notes_init', { roomId: rId, content: currentNotes });
+  });
+
+  // ── SOS Breakdown Buddy System ──
+  socket.on('trigger_sos', async (payload) => {
+    // payload: { subject, topic, userId, userName }
+    try {
+      const User = require('./src/models/User');
+      const onlineIds = Array.from(onlineUsers.keys()).filter(id => id !== String(payload.userId));
+
+      if (onlineIds.length === 0) {
+        // Nobody online — emit back to caller so they know
+        socket.emit('sos_no_experts');
+        return;
+      }
+
+      // Try to find subject-matched experts first
+      let experts = await User.find({
+        _id: { $in: onlineIds },
+        subjects: { $elemMatch: { $regex: new RegExp(payload.subject, 'i') } },
+      }).select('_id name').lean();
+
+      // Fallback: broadcast to ALL online users if no subject match
+      if (experts.length === 0) {
+        experts = await User.find({ _id: { $in: onlineIds } }).select('_id').lean();
+      }
+
+      let sent = 0;
+      experts.forEach(expert => {
+        const expertSocketId = onlineUsers.get(expert._id.toString());
+        if (expertSocketId) {
+          io.to(expertSocketId).emit('incoming_sos', payload);
+          sent++;
+        }
+      });
+
+      // Tell the caller how many experts were pinged
+      socket.emit('sos_broadcast_count', { count: sent });
+
+    } catch (err) {
+      console.error('SOS Error:', err);
+      socket.emit('sos_error', { message: err.message });
+    }
+  });
+
+  socket.on('accept_sos', (payload) => {
+    // payload: { callerId (userId string), helperName }
+    const roomId = `sos_${Date.now()}`;
+
+    // Look up caller's current socket ID from the userId->socketId map
+    const callerSocketId = onlineUsers.get(String(payload.callerId));
+
+    if (callerSocketId) {
+      io.to(callerSocketId).emit('sos_accepted', {
+        roomId,
+        helperName: payload.helperName,
+        helperSocketId: socket.id,
+      });
+    }
+
+    // Also notify the helper (acceptor)
+    socket.emit('sos_accepted', {
+      roomId,
+      helperName: payload.helperName,
+      isHelper: true,
+    });
+  });
+
+  // ── AI Focus Auditor Penalty ──────────────────────────────────────────────
+  // Fires when a user fails the focus check (5 min off-topic, modal dismissed 60s)
+  socket.on('focus_penalty', async ({ userId, roomId, penalty = 50 }) => {
+    try {
+      const User = require('./src/models/User');
+      const user = await User.findByIdAndUpdate(
+        userId,
+        { $inc: { xp: -Math.abs(penalty) } },
+        { new: true, select: 'xp level name' }
+      );
+      if (!user) return;
+
+      // Never let XP go below 0
+      if (user.xp < 0) await User.findByIdAndUpdate(userId, { xp: 0 });
+
+      // Notify the penalised user
+      const userSocketId = onlineUsers.get(String(userId));
+      if (userSocketId) {
+        io.to(userSocketId).emit('xp_deducted', {
+          penalty,
+          newXp: Math.max(0, user.xp),
+          reason: 'Focus Check failed — conversation was off-topic for 5+ minutes',
+        });
+      }
+
+      // Notify the whole room so peers see the accountability
+      io.to(roomId).emit('focus_penalty_applied', {
+        userName: user.name,
+        penalty,
+      });
+    } catch (err) {
+      console.error('Focus Penalty Error:', err.message);
+    }
   });
 
   socket.on('leave_study_room', async ({ roomId } = {}) => {

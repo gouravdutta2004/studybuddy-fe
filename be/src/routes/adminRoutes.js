@@ -11,7 +11,8 @@ const {
   getGamificationLeaderboard, awardBadge,
   getPendingUsers, approveUser, rejectUser,
   getOrgUsers, toggleOrgUserStatus, deleteOrgUser, getOrgDashboardStats,
-  getGlobalOrganizations, createOrganization, updateOrganization, deleteOrganization, getGlobalPendingUsers
+  getGlobalOrganizations, createOrganization, updateOrganization, deleteOrganization, getGlobalPendingUsers,
+  getGlobalSquads, disbandSquad, getGlobalQuests, injectQuest
 } = require('../controllers/adminController');
 const { protect, admin, isOrgAdmin } = require('../middleware/auth');
 const authorizeRole = require('../middleware/rbac');
@@ -57,6 +58,10 @@ router.get('/health', protect, admin, authorizeRole('Super Admin'), getSystemHea
 
 router.get('/reports', protect, admin, authorizeRole('Support Agent', 'Moderator'), getReports);
 router.put('/reports/:id', protect, admin, authorizeRole('Support Agent', 'Moderator'), updateReport);
+
+router.get('/feedback', protect, admin, authorizeRole('Support Agent', 'Moderator'), getFeedback);
+router.put('/feedback/:id', protect, admin, authorizeRole('Support Agent', 'Moderator'), updateFeedbackStatus);
+
 router.get('/content-scan', protect, admin, authorizeRole('Moderator'), scanContent);
 router.put('/flagged-items/:id', protect, admin, authorizeRole('Moderator'), updateFlaggedItem);
 
@@ -67,5 +72,10 @@ router.get('/audit-logs', protect, admin, authorizeRole('Support Agent', 'Modera
 
 router.get('/gamification/leaderboard', protect, admin, authorizeRole('Super Admin', 'Moderator'), getGamificationLeaderboard);
 router.post('/gamification/badge', protect, admin, authorizeRole('Super Admin'), awardBadge);
+router.get('/gamification/quests', protect, admin, authorizeRole('Super Admin', 'Moderator'), getGlobalQuests);
+router.post('/gamification/quests', protect, admin, authorizeRole('Super Admin'), injectQuest);
+
+router.get('/squads', protect, admin, authorizeRole('Super Admin', 'Moderator'), getGlobalSquads);
+router.delete('/squads/:id', protect, admin, authorizeRole('Super Admin'), disbandSquad);
 
 module.exports = router;

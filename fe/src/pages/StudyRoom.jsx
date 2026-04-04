@@ -16,11 +16,13 @@ import TaskBoard from '../components/studyroom/TaskBoard';
 import VoiceReactions from '../components/studyroom/VoiceReactions';
 import SessionReport from '../components/studyroom/SessionReport';
 import FocusAuditor from '../components/studyroom/FocusAuditor';
+import ReportUserModal from '../components/studyroom/ReportUserModal';
 
 import {
   ArrowLeft, Users, Loader2, Maximize, MessageSquare,
-  FileText, PenLine, LayoutList, LogOut, Lock
+  FileText, PenLine, LayoutList, LogOut, Lock, ShieldAlert
 } from 'lucide-react';
+
 
 import { toast } from 'react-hot-toast';
 import { Box, Typography, IconButton, Button, Tooltip, useTheme } from '@mui/material';
@@ -40,6 +42,8 @@ export default function StudyRoom() {
   const [activeTab, setActiveTab] = useState('chat');
   const [socket, setSocket] = useState(null);
   const [showReport, setShowReport] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+
   const whiteboardRef = useRef(null);
   const mainWrapperRef = useRef(null);
 
@@ -145,10 +149,32 @@ export default function StudyRoom() {
       {/* AI Focus Auditor — local speech monitoring, no data leaves device */}
       {socket && user && <FocusAuditor session={session} socket={socket} userId={user._id} />}
 
-      {/* Session Report modal */}
+      {/* Session Report (end-of-session stats) */}
       {showReport && (
         <SessionReport {...sharedProps} onClose={() => { setShowReport(false); navigate('/sessions'); }} />
       )}
+
+      {/* Trust & Safety — Report User modal */}
+      {showReportModal && (() => {
+        // Derive the other participant (non-self)
+        const others = session.participants?.filter(p => {
+          const pid = p._id || p;
+          return String(pid) !== String(user?._id);
+        });
+        const target = others?.[0];
+        const reportedId = target?._id || target;
+        const reportedName = target?.name || 'this user';
+        return (
+          <ReportUserModal
+            open={showReportModal}
+            onClose={() => setShowReportModal(false)}
+            session={session}
+            socket={socket}
+            reportedUserId={reportedId}
+            reportedUserName={reportedName}
+          />
+        );
+      })()}
 
       {/* Main Canvas Area */}
       <Box sx={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -203,6 +229,23 @@ export default function StudyRoom() {
               <Tooltip title="Leave & See Stats">
                 <IconButton size="small" onClick={leaveRoom} sx={{ color: '#ef4444', borderRadius: 1, '&:hover': { bgcolor: '#ef444422' }, transition: 'all 0.2s' }}>
                   <LogOut size={14} />
+                </IconButton>
+              </Tooltip>
+
+              {/* Report & Leave — Trust & Safety */}
+              <Tooltip title="Report user & leave room">
+                <IconButton
+                  size="small"
+                  onClick={() => setShowReportModal(true)}
+                  sx={{
+                    color: '#ef4444', borderRadius: 1,
+                    bgcolor: 'rgba(239,68,68,0.08)',
+                    border: '1px solid rgba(239,68,68,0.25)',
+                    '&:hover': { bgcolor: 'rgba(239,68,68,0.18)', borderColor: 'rgba(239,68,68,0.5)' },
+                    transition: 'all 0.2s', ml: 0.5,
+                  }}
+                >
+                  <ShieldAlert size={14} />
                 </IconButton>
               </Tooltip>
             </Box>

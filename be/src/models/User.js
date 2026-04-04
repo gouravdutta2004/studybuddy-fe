@@ -14,7 +14,6 @@ const userSchema = new mongoose.Schema({
     default: 'Undergraduate'
   },
   university: { type: String, default: '' },
-  location: { type: String, default: '' },
   studyStyle: {
     type: String,
     enum: ['Visual', 'Auditory', 'Reading/Writing', 'Kinesthetic', 'Mixed', 'Pomodoro'],
@@ -44,9 +43,12 @@ const userSchema = new mongoose.Schema({
   level: { type: Number, default: 1 },
   badges: [{ type: String }],
   socialLinks: {
-    github: { type: String, default: '' },
-    linkedin: { type: String, default: '' },
-    instagram: { type: String, default: '' }
+    github:    { type: String, default: '' },
+    linkedin:  { type: String, default: '' },
+    instagram: { type: String, default: '' },
+    twitter:   { type: String, default: '' },
+    facebook:  { type: String, default: '' },
+    youtube:   { type: String, default: '' },
   },
   isVerified: { type: Boolean, default: false },
   weeklyGoals: [{
@@ -57,21 +59,30 @@ const userSchema = new mongoose.Schema({
   }],
   activityLog: [{ type: Date }], // For GitHub-style heatmap
   timezone: { type: String, default: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' },
-  geoLocation: {
-    type: { type: String, enum: ['Point'] },
-    coordinates: { type: [Number] } // [lng, lat]
-  },
   subscription: {
     plan: { type: String, enum: ['basic', 'pro', 'squad'], default: 'basic' },
     activeUntil: { type: Date }
   },
   role: { type: String, enum: ['USER', 'ORG_ADMIN', 'SUPER_ADMIN'], default: 'USER' },
   organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: false },
-  verificationStatus: { type: String, enum: ['APPROVED', 'PENDING', 'REJECTED'], default: 'APPROVED' }
+  verificationStatus: { type: String, enum: ['APPROVED', 'PENDING', 'REJECTED'], default: 'APPROVED' },
+  kycStatus: { type: String, enum: ['UNVERIFIED', 'PENDING', 'VERIFIED', 'REJECTED'], default: 'UNVERIFIED' },
+  verificationDetails: {
+    verifiedInstitution: { type: String, default: '' },
+    verifiedUntil: { type: Date, default: null }
+  },
+  studyProfile: {
+    focusSpan: { type: String, enum: ['POMODORO', 'DEEP_WORK', ''] },
+    learningType: { type: String, enum: ['VISUAL', 'THEORY', 'PROBLEM_SOLVING', ''] },
+    energyPeak: { type: String, enum: ['MORNING', 'NIGHT_OWL', ''] },
+    consistencyScore: { type: Number, default: 100 },
+    reliabilityRating: { type: Number, default: 5.0 }
+  },
+  // ── Trust & Safety ────────────────────────────────────────────────────────
+  trustStrikes:  { type: Number, default: 0 },      // auto-incremented on each report
+  isShadowBanned: { type: Boolean, default: false }, // auto-set when strikes >= 3
 }, { timestamps: true });
 
-// 2dsphere index for geospatial $near queries
-userSchema.index({ geoLocation: '2dsphere' }, { sparse: true });
 
 
 userSchema.pre('save', async function () {

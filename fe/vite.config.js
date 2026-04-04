@@ -26,7 +26,7 @@ export default defineConfig({
       'date-fns',
       'axios',
       'react-markdown',
-      '@react-google-maps/api',
+      'lodash.debounce',
     ],
     exclude: [
       '@splinetool/react-spline',
