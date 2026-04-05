@@ -1,0 +1,35 @@
+feat: Platform-wide Mobile-First Audit — Phase 1-4
+
+Phase 1 — Global Layout & Navigation:
++ MobileBottomNav.jsx (NEW): Instagram/Spotify-style 5-tab fixed bottom bar
+  - Animated Framer Motion pill indicator (layoutId=bottomNavPill)
+  - 44px+ touch targets on all nav items (Apple HIG compliant)
+  - Unread message red pulsing badge
+  - iPhone X+ safe-area-inset-bottom on height
+  - Hidden on md+ (>=768px) via .mobile-bottom-nav CSS class
++ App.jsx: import + mount MobileBottomNav inside Layout
++ App.jsx: pb: { xs: '64px', md: 0 } on main scroll area — content never hides under bottom bar
+
+Phase 2 — Messages & Video Hubs:
+✅ Messages.jsx already has isMobile toggle (showSidebar/showChat) — confirmed working
+
+Phase 3 — Touch Targets & Typography:
++ index.css: input font-size: 16px !important on mobile (prevents iOS Safari auto-zoom bug)
+  - Reverted to inherit on md+ to keep desktop sizing unchanged
++ index.css: -webkit-tap-highlight-color: transparent on all buttons/links
++ index.css: @media (hover: none) active: states for tactile touch feedback (scale + opacity)
++ index.css: h1/h2/h3 overflow-wrap: break-word to prevent heading overflow on narrow screens
+
+Phase 4 — Heavy Animation Performance:
++ DottedSurface.jsx: Mobile guard (skip canvas entirely on <768px)
+  - Returns early if isMobile — no Three.js scene created, no GPU drain
+  - Tablet mode: particles halved (20x30 vs 40x60), 30fps throttle, no antialiasing, pixelRatio capped at 1
+  - Added .heavy-canvas-animation CSS class — display:none on mobile, block on md+
+  - CSS gradient fallback (.mobile-gradient-fallback) shown on mobile instead of canvas
+
+Global CSS (index.css):
++ .heavy-canvas-animation: CSS hide/show for canvas elements on mobile/desktop
++ .mobile-gradient-fallback: beautiful radial gradient fallback for mobile
++ @media (prefers-reduced-motion): kills all animations for accessibility
++ -webkit-overflow-scrolling: touch on all elements (momentum scrolling on iOS)
++ .pb-safe / .mb-safe: safe-area utilities for iPhone home bar
