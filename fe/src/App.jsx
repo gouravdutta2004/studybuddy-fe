@@ -8,6 +8,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
+import MobileBottomNav from './components/MobileBottomNav';
 import { Box, Drawer, useTheme } from '@mui/material';
 import { useState } from 'react';
 import Landing from './pages/Landing';
@@ -135,6 +136,8 @@ const Layout = ({ children }) => {
             minHeight: 0,
             overflowY: 'auto',
             overflowX: 'hidden',
+            // On mobile, add bottom padding so content clears the 64px bottom nav bar
+            pb: { xs: '64px', md: 0 },
             '&::-webkit-scrollbar': { width: '5px' },
             '&::-webkit-scrollbar-track': { background: 'transparent' },
             '&::-webkit-scrollbar-thumb': { background: 'var(--border-strong)', borderRadius: '99px' },
@@ -160,6 +163,8 @@ const Layout = ({ children }) => {
       <WhobeeChat />
       <GlobalMessengerWidget />
       <SupportWidget />
+      {/* Mobile Bottom Navigation — hidden on md+ via CSS */}
+      <MobileBottomNav />
     </Box>
   );
 };

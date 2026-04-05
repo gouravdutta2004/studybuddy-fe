@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Mic, MicOff, Video, VideoOff, MessageSquare, PhoneOff } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, MessageSquare, PhoneOff, MonitorUp } from 'lucide-react';
 import { Box, IconButton, Typography, useTheme } from '@mui/material';
 
 export default function VideoRoom({ roomId, socket, onTogglePanel, showPanel }) {
@@ -127,50 +127,86 @@ export default function VideoRoom({ roomId, socket, onTogglePanel, showPanel }) 
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, pointerEvents: 'auto' }}>
-      <Box sx={{ 
-        display: 'flex', 
-        gap: 2, 
-        overflowX: 'auto', 
-        maxWidth: '100%', 
-        pb: 1, 
-        px: 2,
-        '&::-webkit-scrollbar': { height: 6 },
-        '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(255,255,255,0.2)', borderRadius: 10 }
-      }}>
+    <Box className="flex flex-col items-center justify-center pointer-events-auto w-full h-full p-4 relative z-50">
+      
+      {/* Phase 2 FIX: CSS Grid layout for video tiles */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-6xl overflow-y-auto pb-32">
         {/* Local Video */}
-        <Box sx={{ position: 'relative', width: { xs: 120, md: 160 }, height: { xs: 90, md: 120 }, flexShrink: 0, bgcolor: '#111', borderRadius: 3, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)' }}>
+        <Box sx={{ position: 'relative', aspectRatio: '16/9', width: '100%', bgcolor: '#111', borderRadius: 3, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)' }}>
           <video playsInline muted ref={localVideoRef} autoPlay style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
-          <Box sx={{ position: 'absolute', bottom: 6, left: 6, bgcolor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', color: 'white', px: 1, py: 0.25, borderRadius: 1 }}>
-            <Typography variant="caption" fontWeight={600} fontSize="0.7rem">You</Typography>
+          <Box sx={{ position: 'absolute', bottom: 12, left: 12, bgcolor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', color: 'white', px: 1.5, py: 0.5, borderRadius: 1.5 }}>
+            <Typography variant="caption" fontWeight={600} fontSize="0.75rem">You</Typography>
           </Box>
           {!videoOn && (
             <Box sx={{ position: 'absolute', inset: 0, bgcolor: '#1f2937', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-               <VideoOff size={24} color="rgba(255,255,255,0.5)" />
+               <VideoOff size={32} color="rgba(255,255,255,0.5)" />
             </Box>
           )}
         </Box>
 
         {/* Remote Videos */}
         {peers.map((peerId) => (
-          <Box key={peerId} sx={{ position: 'relative', width: { xs: 120, md: 160 }, height: { xs: 90, md: 120 }, flexShrink: 0, bgcolor: '#111', borderRadius: 3, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)' }}>
-            {/* Phase 1 FIX: autoPlay + playsInline, NO muted on remote video */}
+          <Box key={peerId} sx={{ position: 'relative', aspectRatio: '16/9', width: '100%', bgcolor: '#111', borderRadius: 3, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)' }}>
             <video playsInline autoPlay ref={el => { if(el) remoteVideoesRef.current[peerId] = el; }} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            <Box sx={{ position: 'absolute', bottom: 6, left: 6, bgcolor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', color: 'white', px: 1, py: 0.25, borderRadius: 1 }}>
-               <Typography variant="caption" fontWeight={600} fontSize="0.7rem">Peer</Typography>
+            <Box sx={{ position: 'absolute', bottom: 12, left: 12, bgcolor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', color: 'white', px: 1.5, py: 0.5, borderRadius: 1.5 }}>
+               <Typography variant="caption" fontWeight={600} fontSize="0.75rem">Peer</Typography>
             </Box>
           </Box>
         ))}
-      </Box>
+      </div>
 
-      {/* Control Dock */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, background: 'rgba(20,20,20,0.7)', backdropFilter: 'blur(16px)', p: 1, borderRadius: 50, border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
-        <IconButton onClick={toggleMic} sx={{ bgcolor: micOn ? 'rgba(255,255,255,0.15)' : '#ef4444', color: 'white', '&:hover': { bgcolor: micOn ? 'rgba(255,255,255,0.25)' : '#dc2626' } }}><Mic size={20} /></IconButton>
-        <IconButton onClick={toggleVideo} sx={{ bgcolor: videoOn ? 'rgba(255,255,255,0.15)' : '#ef4444', color: 'white', '&:hover': { bgcolor: videoOn ? 'rgba(255,255,255,0.25)' : '#dc2626' } }}><Video size={20} /></IconButton>
-        <Box sx={{ width: '1px', height: 24, bgcolor: 'rgba(255,255,255,0.2)', mx: 0.5 }} />
-        <IconButton onClick={onTogglePanel} sx={{ color: 'white', bgcolor: showPanel ? 'rgba(59,130,246,0.3)' : 'transparent', '&:hover': { bgcolor: 'rgba(59,130,246,0.4)' } }}><MessageSquare size={20} /></IconButton>
-        <IconButton onClick={() => window.location.href='/sessions'} sx={{ bgcolor: '#ef4444', color: 'white', '&:hover': { bgcolor: '#dc2626' }, ml: 1, px: 3, borderRadius: 20 }}><PhoneOff size={18} style={{ marginRight: 6 }} /> Leave</IconButton>
+      {/* Phase 2 FIX: Fixed control bar highly visible at the bottom */}
+      <Box sx={{ 
+        position: 'fixed', bottom: { xs: 24, md: 32 }, left: '50%', transform: 'translateX(-50%)',
+        display: 'flex', alignItems: 'center', gap: { xs: 1, md: 2 }, 
+        background: 'rgba(15, 15, 15, 0.85)', backdropFilter: 'blur(16px)', 
+        px: 3, py: 1.5, borderRadius: '99px', border: '1px solid rgba(255,255,255,0.1)', 
+        boxShadow: '0 12px 40px rgba(0,0,0,0.6)', zIndex: 9999 
+      }}>
+        <IconButton onClick={toggleMic} sx={{ 
+          bgcolor: micOn ? 'rgba(255,255,255,0.15)' : '#ef4444', color: 'white', 
+          width: { xs: 44, md: 52 }, height: { xs: 44, md: 52 },
+          '&:hover': { bgcolor: micOn ? 'rgba(255,255,255,0.25)' : '#dc2626' } 
+        }}>
+          {micOn ? <Mic size={24} /> : <MicOff size={24} />}
+        </IconButton>
+        
+        <IconButton onClick={toggleVideo} sx={{ 
+          bgcolor: videoOn ? 'rgba(255,255,255,0.15)' : '#ef4444', color: 'white', 
+          width: { xs: 44, md: 52 }, height: { xs: 44, md: 52 },
+          '&:hover': { bgcolor: videoOn ? 'rgba(255,255,255,0.25)' : '#dc2626' } 
+        }}>
+          {videoOn ? <Video size={24} /> : <VideoOff size={24} />}
+        </IconButton>
+
+        {/* Screen Share Placeholder (UI ONLY for Phase 2 spec) */}
+        <IconButton sx={{ 
+          bgcolor: 'rgba(255,255,255,0.15)', color: 'white', 
+          width: { xs: 44, md: 52 }, height: { xs: 44, md: 52 },
+          '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' } 
+        }}>
+          <MonitorUp size={20} />
+        </IconButton>
+        
+        <Box sx={{ width: '1px', height: 32, bgcolor: 'rgba(255,255,255,0.2)', mx: 1 }} />
+        
+        <IconButton onClick={onTogglePanel} sx={{ 
+          color: 'white', bgcolor: showPanel ? 'rgba(59,130,246,0.3)' : 'transparent', 
+          width: { xs: 44, md: 52 }, height: { xs: 44, md: 52 },
+          '&:hover': { bgcolor: 'rgba(59,130,246,0.4)' } 
+        }}>
+          <MessageSquare size={24} />
+        </IconButton>
+        
+        <IconButton onClick={() => window.location.href='/sessions'} sx={{ 
+          bgcolor: '#ef4444', color: 'white', fontWeight: 700,
+          '&:hover': { bgcolor: '#dc2626' }, ml: 1, px: { xs: 2.5, md: 3 }, py: { xs: 1, md: 1.5 }, borderRadius: '99px', fontSize: '1rem' 
+        }}>
+          <PhoneOff size={20} style={{ marginRight: 8 }} />
+          Leave
+        </IconButton>
       </Box>
     </Box>
   );
 }
+

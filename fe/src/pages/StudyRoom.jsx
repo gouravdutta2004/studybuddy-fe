@@ -258,7 +258,7 @@ export default function StudyRoom() {
         </Box>
 
         {/* Video Dock */}
-        <Box sx={{ position: 'absolute', bottom: 80, left: 32, zIndex: 50, pointerEvents: 'none', width: 'auto', maxWidth: 1200 }}>
+        <Box sx={{ position: 'absolute', inset: 0, zIndex: 50, pointerEvents: 'none' }}>
           {socket && <VideoRoom roomId={id} socket={socket} onTogglePanel={() => setShowPanel(!showPanel)} showPanel={showPanel} />}
         </Box>
       </Box>

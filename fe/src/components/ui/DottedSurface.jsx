@@ -12,9 +12,19 @@ export function DottedSurface({ className, ...props }) {
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // ── Mobile performance guard ──────────────────────────────────────────
+    // On screens < 768px we skip the canvas entirely (hidden via CSS) and
+    // render a lightweight CSS gradient fallback instead.
+    // Reduce particle count on tablets (768–1024px) for battery savings.
+    const isMobile = window.innerWidth < 768;
+    const isTablet = window.innerWidth < 1024;
+
+    if (isMobile) return; // Canvas is hidden via CSS; nothing to mount.
+
     const SEPARATION = 150;
-    const AMOUNTX = 40;
-    const AMOUNTY = 60;
+    // Reduce particle grid on tablets to half
+    const AMOUNTX = isTablet ? 20 : 40;
+    const AMOUNTY = isTablet ? 30 : 60;
 
     // Scene setup
     const scene = new THREE.Scene();
@@ -30,9 +40,9 @@ export function DottedSurface({ className, ...props }) {
 
     const renderer = new THREE.WebGLRenderer({
       alpha: true,
-      antialias: true,
+      antialias: !isTablet, // skip antialiasing on tablet for perf
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isTablet ? 1 : 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(scene.fog.color, 0);
 
@@ -53,7 +63,7 @@ export function DottedSurface({ className, ...props }) {
 
         positions.push(x, y, z);
         if (theme === 'dark') {
-          colors.push(200 / 255, 200 / 255, 200 / 255); // ThreeJS standardizes 0-1
+          colors.push(200 / 255, 200 / 255, 200 / 255);
         } else {
           colors.push(0, 0, 0);
         }
@@ -82,9 +92,17 @@ export function DottedSurface({ className, ...props }) {
     let count = 0;
     let animationId;
 
-    // Animation function
-    const animate = () => {
+    // Animation function — throttle on tablet to ~30fps for battery savings
+    let lastFrame = 0;
+    const TARGET_FPS = isTablet ? 30 : 60;
+    const FRAME_INTERVAL = 1000 / TARGET_FPS;
+
+    const animate = (timestamp = 0) => {
       animationId = requestAnimationFrame(animate);
+
+      const delta = timestamp - lastFrame;
+      if (delta < FRAME_INTERVAL) return; // throttle
+      lastFrame = timestamp - (delta % FRAME_INTERVAL);
 
       const positionAttribute = geometry.attributes.position;
       const posArray = positionAttribute.array;
@@ -94,7 +112,6 @@ export function DottedSurface({ className, ...props }) {
         for (let iy = 0; iy < AMOUNTY; iy++) {
           const index = i * 3;
 
-          // Animate Y position with sine waves
           posArray[index + 1] =
             Math.sin((ix + count) * 0.3) * 50 +
             Math.sin((iy + count) * 0.5) * 50;
@@ -146,7 +163,6 @@ export function DottedSurface({ className, ...props }) {
       if (sceneRef.current) {
         cancelAnimationFrame(sceneRef.current.animationId);
 
-        // Clean up Three.js objects
         sceneRef.current.scene.traverse((object) => {
           if (object instanceof THREE.Points) {
             object.geometry.dispose();
@@ -169,14 +185,17 @@ export function DottedSurface({ className, ...props }) {
     };
   }, [theme]);
 
-  // Three is rendering RGB values where they must be between 0-1 when using Float32BufferAttribute!
-  // I updated them.
-
   return (
-    <div
-      ref={containerRef}
-      className={cn('pointer-events-none fixed inset-0 z-0', className)}
-      {...props}
-    />
+    <>
+      {/* Canvas — hidden on mobile via CSS .heavy-canvas-animation class */}
+      <div
+        ref={containerRef}
+        className={cn('pointer-events-none fixed inset-0 z-0 heavy-canvas-animation', className)}
+        {...props}
+      />
+      {/* Lightweight CSS gradient fallback shown on mobile instead of canvas */}
+      <div className="mobile-gradient-fallback" aria-hidden="true" />
+    </>
   );
 }
+
