@@ -26,6 +26,18 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// ── Global Privacy & Security Headers ──────────────────────────────────────
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  // Remove fingerprinting header
+  res.removeHeader('X-Powered-By');
+  next();
+});
+
 app.use('/uploads', require('./src/middleware/auth').protect, express.static('uploads'));
 app.use('/api/auth', require('./src/routes/auth'));
 app.use('/api/users', require('./src/routes/users'));
@@ -67,6 +79,9 @@ app.set('liveRooms', liveRooms);
 
 // ----- COLLAB NOTES PER ROOM -----
 const roomNotes = new Map(); // roomId -> string (current note content)
+
+// ----- WHITEBOARD STATE PER ROOM -----
+const roomWhiteboards = new Map(); // roomId -> string (serialized TLDraw state)
 
 const http = require('http');
 const { Server } = require('socket.io');
@@ -199,7 +214,7 @@ io.on('connection', (socket) => {
   });
 
   // ── Study Room: WebRTC, Whiteboard, Live Rooms, Collab Notes ──
-  socket.on('join_study_room', ({ roomId, userId, userName, title, subject } = {}) => {
+  socket.on('join_study_room', async ({ roomId, userId, userName, title, subject } = {}) => {
     // Support both old string format and new object format
     const rId = typeof roomId === 'string' ? roomId : (roomId?.roomId || roomId);
     socket.join(rId);
@@ -223,7 +238,17 @@ io.on('connection', (socket) => {
     socket.to(rId).emit('user_joined_room', socket.id);
 
     // Send current collab notes to new joiner
-    const currentNotes = roomNotes.get(rId) || '';
+    let currentNotes = roomNotes.get(rId);
+    if (currentNotes === undefined) {
+      try {
+        const Session = require('./src/models/Session');
+        const session = await Session.findById(rId).select('collabNotes');
+        currentNotes = session?.collabNotes || '';
+        roomNotes.set(rId, currentNotes);
+      } catch (e) {
+        currentNotes = '';
+      }
+    }
     socket.emit('collab_notes_init', { roomId: rId, content: currentNotes });
   });
 
@@ -338,14 +363,19 @@ io.on('connection', (socket) => {
       room.participants = room.participants.filter(p => p.socketId !== socket.id);
       if (room.participants.length === 0) {
         liveRooms.delete(rId);
-        // Persist collab notes to DB when last user leaves
+        // Persist collab notes and whiteboard to DB when last user leaves
         const finalNotes = roomNotes.get(rId);
-        if (finalNotes) {
+        const finalWhiteboard = roomWhiteboards.get(rId);
+        if (finalNotes || finalWhiteboard) {
           try {
             const Session = require('./src/models/Session');
-            await Session.findByIdAndUpdate(rId, { collabNotes: finalNotes });
+            const updates = {};
+            if (finalNotes) updates.collabNotes = finalNotes;
+            if (finalWhiteboard) updates.whiteboardState = finalWhiteboard;
+            await Session.findByIdAndUpdate(rId, updates);
           } catch (e) { /* silent */ }
           roomNotes.delete(rId);
+          roomWhiteboards.delete(rId);
         }
       } else {
         liveRooms.set(rId, room);
@@ -358,6 +388,10 @@ io.on('connection', (socket) => {
     socket.to(roomId).emit('room_message', message);
   });
 
+  socket.on('room_typing', ({ roomId, userId, userName, isTyping }) => {
+    socket.to(roomId).emit('room_typing', { userId, userName, isTyping });
+  });
+
   socket.on('webrtc_signal', (data) => {
     io.to(data.to).emit('webrtc_signal', {
       signal: data.signal,
@@ -366,7 +400,41 @@ io.on('connection', (socket) => {
   });
 
   socket.on('whiteboard_update', (payload) => {
+    // payload: { roomId, elements, removed, fullState }
+    if (payload.fullState) {
+      roomWhiteboards.set(payload.roomId, payload.fullState);
+    }
     socket.to(payload.roomId).emit('whiteboard_update', payload);
+  });
+
+  socket.on('whiteboard_sync_request', async ({ roomId }) => {
+    // Try in-memory first
+    let state = roomWhiteboards.get(roomId);
+    if (state) {
+      socket.emit('whiteboard_sync_response', { state });
+    } else {
+      // Try database
+      try {
+        const Session = require('./src/models/Session');
+        const session = await Session.findById(roomId).select('whiteboardState');
+        if (session?.whiteboardState) {
+          roomWhiteboards.set(roomId, session.whiteboardState);
+          socket.emit('whiteboard_sync_response', { state: session.whiteboardState });
+        } else {
+          // Fallback: ask other peers
+          socket.to(roomId).emit('whiteboard_sync_request', { from: socket.id });
+        }
+      } catch (e) {
+        socket.to(roomId).emit('whiteboard_sync_request', { from: socket.id });
+      }
+    }
+  });
+
+  socket.on('whiteboard_sync_response', ({ to, state, roomId }) => {
+    if (roomId && state) {
+      roomWhiteboards.set(roomId, state);
+    }
+    io.to(to).emit('whiteboard_sync_response', { state });
   });
 
   socket.on('ready_for_webrtc', ({ roomId }) => {

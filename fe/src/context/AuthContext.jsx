@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import api from '../api/axios';
 
 const AuthContext = createContext();
@@ -27,7 +27,7 @@ async function tryAutoSubscribePush() {
 
     const sub = existing || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytes });
     await api.post('/push/subscribe', { subscription: sub.toJSON() });
-  } catch (e) {
+  } catch {
     // Silent fail — user can enable manually from Navbar
   }
 }
@@ -50,7 +50,7 @@ async function sendDailyPing(setUser) {
       xp: data.xp,
       level: data.level,
     } : prev);
-  } catch (e) {
+  } catch {
     // Non-critical — don't block the user
   }
 }
@@ -59,18 +59,33 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // On mount: load user from token, then fire the daily ping
+  // On mount: validate stored token before using it, then load user
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
+      // Quick client-side expiry check before hitting the network
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          localStorage.removeItem('token');
+          setLoading(false);
+          return;
+        }
+      } catch {
+        localStorage.removeItem('token');
+        setLoading(false);
+        return;
+      }
+
       api.get('/auth/me')
         .then(res => {
           setUser(res.data);
           tryAutoSubscribePush();
-          // Fire daily ping after user is loaded — this is what keeps the streak alive
           sendDailyPing(setUser);
         })
-        .catch(() => localStorage.removeItem('token'))
+        .catch(() => {
+          localStorage.removeItem('token');
+        })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
@@ -106,7 +121,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    // Privacy: wipe ALL locally stored auth data on logout
     localStorage.removeItem('token');
+    sessionStorage.clear();
+    // Wipe any cached user-sensitive keys that may have been set by other components
+    const PRIVACY_KEYS = ['draft_message', 'last_search', 'user_prefs'];
+    PRIVACY_KEYS.forEach(k => localStorage.removeItem(k));
     setUser(null);
   };
 
@@ -118,7 +138,7 @@ export const AuthProvider = ({ children }) => {
       const { data } = await api.get('/auth/me');
       setUser(data);
       return data;
-    } catch (e) {
+    } catch {
       return null;
     }
   };

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { Pinecone } = require('@pinecone-database/pinecone');
+const { protect, admin } = require('../middleware/auth');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function getGenAI() {
@@ -58,9 +59,9 @@ const platformKnowledge = [
   "Cognitive matching considers: Focus Span (short/medium/long), Energy Peak (morning/afternoon/evening), Learning Style (visual/auditory/reading/kinesthetic), and Subject Overlap to produce a compatibility score.",
 ];
 
-// ─── SEED Route — run once to populate Pinecone ────────────────────────────
+// ─── SEED Route — run once to populate Pinecone (Admin only) ────────────────
 // GET /api/whobee/seed
-router.get('/seed', async (req, res) => {
+router.get('/seed', protect, admin, async (req, res) => {
   try {
     console.log('[Whobee] Seeding Pinecone with', platformKnowledge.length, 'knowledge chunks...');
     const embeddings = await embedMany(platformKnowledge);
@@ -171,8 +172,8 @@ ${retrievedContext}
 
     const isRateLimit = err.message?.includes('429') || err.message?.includes('quota') || err.message?.includes('Too Many Requests');
     const friendlyMsg = isRateLimit
-      ? "⚠️ I'm a bit tired right now — my AI quota has been temporarily exhausted from heavy use today! I'll be fully recharged soon. In the meantime, check the [help center](/support) or try again in a few hours! 🌙"
-      : `⚠️ I ran into a connection issue. Please ensure the server is running and try again! (**Debug Backend**: ${err.message})`;
+      ? "⚠️ I'm a bit tired right now — my AI quota has been temporarily exhausted from heavy use today! I'll be fully recharged soon. Check the [help center](/support) or try again in a few hours! 🌙"
+      : `⚠️ I ran into a connection issue. Please try again in a moment or contact support.`;
 
     if (!res.headersSent) {
       // SSE not started — send as JSON fallback

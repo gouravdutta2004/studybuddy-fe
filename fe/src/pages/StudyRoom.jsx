@@ -17,36 +17,158 @@ import VoiceReactions from '../components/studyroom/VoiceReactions';
 import SessionReport from '../components/studyroom/SessionReport';
 import FocusAuditor from '../components/studyroom/FocusAuditor';
 import ReportUserModal from '../components/studyroom/ReportUserModal';
+import ArcadeSidebar from '../components/studyroom/ArcadeSidebar';
 
 import {
   ArrowLeft, Users, Loader2, Maximize, MessageSquare,
-  FileText, PenLine, LayoutList, LogOut, Lock, ShieldAlert
+  FileText, PenLine, LayoutList, LogOut, Lock, ShieldAlert,
+  Gamepad2, Timer, CheckSquare, Music, Vote, Hand, Wifi,
+  WifiOff, Sparkles, BookOpen, Crown, Zap
 } from 'lucide-react';
 
-
 import { toast } from 'react-hot-toast';
-import { Box, Typography, IconButton, Button, Tooltip, useTheme } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { io } from 'socket.io-client';
 
+// ─── Design tokens ───────────────────────────────────────────────
+const T = {
+  bg:       '#0F172A',
+  bgCard:   '#1E293B',
+  bgGlass:  'rgba(30,41,59,0.7)',
+  primary:  '#6366F1',
+  primaryL: 'rgba(99,102,241,0.15)',
+  primaryB: 'rgba(99,102,241,0.3)',
+  accent1:  '#22C55E',
+  accent2:  '#F59E0B',
+  border:   'rgba(99,102,241,0.18)',
+  borderSub:'rgba(255,255,255,0.06)',
+  text:     '#F1F5F9',
+  textMuted:'#94A3B8',
+  textDim:  '#475569',
+};
+
+const glass = {
+  background: T.bgGlass,
+  backdropFilter: 'blur(20px)',
+  WebkitBackdropFilter: 'blur(20px)',
+  border: `1px solid ${T.border}`,
+  borderRadius: 16,
+  boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)',
+};
+
+// ─── Tab definitions ──────────────────────────────────────────────
+const TABS = [
+  { key: 'chat',   icon: MessageSquare, label: 'Chat',   color: T.primary },
+  { key: 'notes',  icon: FileText,      label: 'Files',  color: '#22C55E' },
+  { key: 'collab', icon: PenLine,       label: 'Notes',  color: '#F59E0B' },
+  { key: 'tasks',  icon: CheckSquare,   label: 'Tasks',  color: '#F59E0B' },
+  { key: 'tools',  icon: LayoutList,    label: 'Tools',  color: '#22C55E' },
+  { key: 'arcade', icon: Gamepad2,      label: 'Arcade', color: '#F59E0B' },
+];
+
+// ─── Participant Chip ─────────────────────────────────────────────
+function ParticipantChip({ participant, index }) {
+  const colors = ['#6366F1','#22C55E','#F59E0B','#EC4899','#14B8A6'];
+  const color = colors[index % colors.length];
+  const name = participant?.name || participant || '?';
+  return (
+    <motion.div
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ delay: index * 0.06 }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        background: `${color}18`, border: `1px solid ${color}35`,
+        borderRadius: 20, padding: '4px 10px 4px 4px',
+        flexShrink: 0,
+      }}
+    >
+      <div style={{
+        width: 24, height: 24, borderRadius: '50%',
+        background: `linear-gradient(135deg, ${color}aa, ${color})`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 10, fontWeight: 800, color: '#fff',
+        boxShadow: `0 0 8px ${color}55`,
+      }}>
+        {String(name)[0]?.toUpperCase()}
+      </div>
+      <span style={{ fontSize: 11, fontWeight: 600, color: T.text, maxWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {name}
+      </span>
+    </motion.div>
+  );
+}
+
+// ─── Loading Screen ───────────────────────────────────────────────
+function LoadingScreen() {
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      height: '100vh', background: T.bg, gap: 20,
+    }}>
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+        style={{
+          width: 56, height: 56, borderRadius: '50%',
+          border: `3px solid ${T.primaryB}`,
+          borderTopColor: T.primary,
+        }}
+      />
+      <motion.p
+        animate={{ opacity: [0.4, 1, 0.4] }}
+        transition={{ duration: 2, repeat: Infinity }}
+        style={{ color: T.textMuted, fontSize: 14, fontWeight: 600, fontFamily: 'Inter, sans-serif' }}
+      >
+        Entering study room…
+      </motion.p>
+    </div>
+  );
+}
+
+// ─── Connection Badge ─────────────────────────────────────────────
+function ConnectionBadge({ connected }) {
+  return (
+    <motion.div
+      animate={{ opacity: [1, 0.6, 1] }}
+      transition={{ duration: 2, repeat: Infinity }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 5,
+        background: connected ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+        border: `1px solid ${connected ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+        borderRadius: 8, padding: '4px 9px',
+      }}
+    >
+      {connected
+        ? <Wifi size={10} color="#22C55E" />
+        : <WifiOff size={10} color="#ef4444" />
+      }
+      <span style={{ fontSize: 10, fontWeight: 700, color: connected ? '#22C55E' : '#ef4444', letterSpacing: 0.5 }}>
+        {connected ? 'LIVE' : 'OFFLINE'}
+      </span>
+    </motion.div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────
 export default function StudyRoom() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const theme = useTheme();
-  const isDark = theme.palette.mode === 'dark';
 
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [showPanel, setShowPanel] = useState(true);
-  const [activeTab, setActiveTab] = useState('chat');
-  const [socket, setSocket] = useState(null);
-  const [showReport, setShowReport] = useState(false);
+  const [session, setSession]           = useState(null);
+  const [loading, setLoading]           = useState(true);
+  const [showPanel, setShowPanel]       = useState(true);
+  const [activeTab, setActiveTab]       = useState('chat');
+  const [socket, setSocket]             = useState(null);
+  const [showReport, setShowReport]     = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(false);
 
-  const whiteboardRef = useRef(null);
+  const whiteboardRef  = useRef(null);
   const mainWrapperRef = useRef(null);
 
+  // ── Fetch & join session ──
   useEffect(() => {
     const fetchSessionAndJoin = async () => {
       try {
@@ -60,7 +182,7 @@ export default function StudyRoom() {
         if (!isParticipant && !isHost) {
           try {
             await api.post(`/sessions/${id}/join`);
-            toast.success('Automatically joined the session via direct link!');
+            toast.success('Joined session via direct link!');
             const joinedRes = await api.get(`/sessions/${id}`);
             setSession(joinedRes.data);
           } catch (joinErr) {
@@ -81,10 +203,13 @@ export default function StudyRoom() {
     if (user) fetchSessionAndJoin();
   }, [id, navigate, user]);
 
+  // ── Socket init ──
   useEffect(() => {
     if (!session) return;
     const wsUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5001';
     const newSocket = io(wsUrl, { withCredentials: true });
+    newSocket.on('connect', () => setSocketConnected(true));
+    newSocket.on('disconnect', () => setSocketConnected(false));
     newSocket.emit('join_study_room', {
       roomId: id, userId: user?._id, userName: user?.name,
       title: session.title, subject: session.subject,
@@ -96,11 +221,6 @@ export default function StudyRoom() {
     };
   }, [id, session, user]);
 
-  // NOTE: No client-side socket relay needed.
-  // The server broadcasts all events (room_message, task:add, etc.) to
-  // all room members automatically via socket.to(roomId).emit(...).
-  // A client-side relay would cause echo loops and undefined-roomId errors.
-
   const toggleFullscreen = () => {
     if (!document.fullscreenElement && mainWrapperRef.current) {
       mainWrapperRef.current.requestFullscreen().catch(err => toast.error(`Fullscreen error: ${err.message}`));
@@ -109,237 +229,442 @@ export default function StudyRoom() {
     }
   };
 
-  const leaveRoom = () => { setShowReport(true); };
+  const leaveRoom = () => setShowReport(true);
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', bgcolor: isDark ? '#0f0f11' : '#f8f9fa' }}>
-        <Loader2 className="animate-spin text-blue-500" size={40} color={isDark ? '#fff' : '#000'} />
-      </Box>
-    );
-  }
+  if (loading) return <LoadingScreen />;
   if (!session) return null;
 
-  const surfaceColor = isDark ? '#1e1e1e' : '#ffffff';
-  const borderColor = isDark ? '#333333' : '#e0e0e0';
-  const textColor = isDark ? '#f4f4f5' : '#18181b';
-  const textMuted = isDark ? '#a1a1aa' : '#71717a';
+  const isHost = session.host?._id === user?._id || session.host === user?._id;
+  const sharedProps = { socket, roomId: id, session, isDark: true };
 
-  const TABS = [
-    { key: 'chat',     icon: <MessageSquare size={10} />, label: 'Chat' },
-    { key: 'notes',    icon: <FileText size={10} />,      label: 'Files' },
-    { key: 'collab',   icon: <PenLine size={10} />,       label: 'Notes' },
-    { key: 'tools',    icon: <LayoutList size={10} />,    label: 'Tools' },
-  ];
-
-  const sharedProps = { socket, roomId: id, session, isDark };
+  // ── Report target ──
+  const others = session.participants?.filter(p => {
+    const pid = p._id || p;
+    return String(pid) !== String(user?._id);
+  });
+  const reportTarget = others?.[0];
+  const reportedId   = reportTarget?._id || reportTarget;
+  const reportedName = reportTarget?.name || 'this user';
 
   return (
-    <Box ref={mainWrapperRef} sx={{
-      display: 'flex', height: '100vh',
-      bgcolor: isDark ? '#121212' : '#f0f2f5',
-      backgroundImage: `radial-gradient(${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'} 1px, transparent 1px)`,
-      backgroundSize: '24px 24px',
-      color: textColor, overflow: 'hidden', fontFamily: 'Inter, sans-serif', position: 'relative'
-    }}>
+    <div
+      ref={mainWrapperRef}
+      style={{
+        display: 'flex', height: '100vh', overflow: 'hidden',
+        background: `radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.08) 0%, transparent 60%),
+                     radial-gradient(ellipse at 80% 20%, rgba(34,197,94,0.04) 0%, transparent 50%),
+                     ${T.bg}`,
+        fontFamily: "'Inter', -apple-system, sans-serif",
+        color: T.text, position: 'relative',
+      }}
+    >
+      {/* Animated grid overlay */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
+        backgroundImage: `linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px),
+                          linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px)`,
+        backgroundSize: '40px 40px',
+      }} />
 
-      {/* Voice reactions overlay (always mounted if in room) */}
+      {/* Voice reactions overlay */}
       {socket && <VoiceReactions socket={socket} roomId={id} />}
-
-      {/* AI Focus Auditor — local speech monitoring, no data leaves device */}
+      {/* AI Focus Auditor */}
       {socket && user && <FocusAuditor session={session} socket={socket} userId={user._id} />}
 
-      {/* Session Report (end-of-session stats) */}
+      {/* Session Report */}
       {showReport && (
         <SessionReport {...sharedProps} onClose={() => { setShowReport(false); navigate('/sessions'); }} />
       )}
 
-      {/* Trust & Safety — Report User modal */}
-      {showReportModal && (() => {
-        // Derive the other participant (non-self)
-        const others = session.participants?.filter(p => {
-          const pid = p._id || p;
-          return String(pid) !== String(user?._id);
-        });
-        const target = others?.[0];
-        const reportedId = target?._id || target;
-        const reportedName = target?.name || 'this user';
-        return (
-          <ReportUserModal
-            open={showReportModal}
-            onClose={() => setShowReportModal(false)}
-            session={session}
-            socket={socket}
-            reportedUserId={reportedId}
-            reportedUserName={reportedName}
-          />
-        );
-      })()}
+      {/* Report User modal */}
+      {showReportModal && (
+        <ReportUserModal
+          open={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          session={session}
+          socket={socket}
+          reportedUserId={reportedId}
+          reportedUserName={reportedName}
+        />
+      )}
 
-      {/* Main Canvas Area */}
-      <Box sx={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* ── Main canvas ── */}
+      <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 1 }}>
 
-        {/* Top Nav Overlay */}
-        <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 50, p: { xs: 2, md: 3 }, display: 'flex', justifyContent: 'center', alignItems: 'center', pointerEvents: 'none' }}>
-          <Box sx={{
-            pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: { xs: 1, md: 2.5 },
-            bgcolor: surfaceColor, px: 1, py: 1, borderRadius: '8px',
-            border: `1px solid ${borderColor}`,
-            boxShadow: isDark ? '0 4px 12px rgba(0,0,0,0.4)' : '0 4px 12px rgba(0,0,0,0.05)',
-          }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 1 }}>
-              <IconButton size="small" onClick={() => navigate('/sessions')}
-                sx={{ color: textMuted, borderRadius: 1, '&:hover': { bgcolor: isDark ? '#2c2c2c' : '#f4f4f5', color: textColor }, transition: 'all 0.2s' }}>
-                <ArrowLeft size={16} />
-              </IconButton>
-              <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: textColor, display: { xs: 'none', sm: 'block' } }}>
-                {session.title}
-              </Typography>
-            </Box>
+        {/* ── Top HUD bar ── */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, zIndex: 50,
+          padding: '12px 16px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: 'linear-gradient(180deg, rgba(15,23,42,0.95) 0%, transparent 100%)',
+          backdropFilter: 'blur(8px)',
+          pointerEvents: 'none',
+          gap: 16,
+        }}>
+          {/* Left: Back + Title */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'auto', minWidth: 0, flex: 1 }}>
+            <motion.button
+              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              onClick={() => navigate('/sessions')}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                background: T.primaryL, border: `1px solid ${T.primaryB}`,
+                color: T.primary, cursor: 'pointer',
+              }}
+            >
+              <ArrowLeft size={16} />
+            </motion.button>
 
-            {/* E2EE Privacy Badge */}
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)',
-              borderRadius: 6, padding: '3px 8px',
+              ...glass, padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 10,
+              minWidth: 0,
             }}>
-              <Lock size={10} color="#10b981" />
-              <span style={{ fontSize: '0.6rem', fontWeight: 700, color: '#10b981', letterSpacing: 0.3 }}>E2EE</span>
+              <div style={{
+                width: 8, height: 8, borderRadius: '50%', background: '#22C55E',
+                boxShadow: '0 0 8px #22C55E', animation: 'pulse 2s infinite', flexShrink: 0
+              }} />
+              <span style={{ fontWeight: 700, fontSize: 13, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {session.title}
+              </span>
+              <div style={{
+                padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, flexShrink: 0,
+                background: `${T.primary}20`, border: `1px solid ${T.primaryB}`,
+                color: T.primary, textTransform: 'uppercase', letterSpacing: 0.5,
+              }}>
+                {session.subject}
+              </div>
+              {isHost && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                  <Crown size={11} color="#F59E0B" />
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#F59E0B' }}>HOST</span>
+                </div>
+              )}
             </div>
 
-            <Box sx={{ width: 1, height: 16, bgcolor: borderColor }} />
+            {/* Participant chips (hidden on very small screens) */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              overflow: 'hidden', pointerEvents: 'auto',
+            }}>
+              {(session.participants || []).slice(0, 3).map((p, i) => (
+                <ParticipantChip key={p._id || p || i} participant={p} index={i} />
+              ))}
+              {(session.participants?.length || 0) > 3 && (
+                <div style={{
+                  padding: '4px 10px', borderRadius: 20, flexShrink: 0,
+                  background: T.primaryL, border: `1px solid ${T.primaryB}`,
+                  fontSize: 11, fontWeight: 700, color: T.primary,
+                }}>
+                  +{session.participants.length - 3}
+                </div>
+              )}
+            </div>
+          </div>
 
-            <Box sx={{ px: 1.5, py: 0.5, borderRadius: '4px', bgcolor: isDark ? '#27272a' : '#f4f4f5', border: `1px solid ${borderColor}`, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#3b82f6' }} />
-              <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, color: textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>{session.subject}</Typography>
-            </Box>
+          {/* Right: Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8, pointerEvents: 'auto', flexShrink: 0 }}>
+            {/* Status badges */}
+            <ConnectionBadge connected={socketConnected} />
 
-            <Box sx={{ width: 1, height: 16, bgcolor: borderColor }} />
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)',
+              borderRadius: 8, padding: '4px 9px',
+            }}>
+              <Lock size={10} color="#22C55E" />
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#22C55E', letterSpacing: 0.5 }}>E2EE</span>
+            </div>
 
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pr: 1 }}>
-              <Typography sx={{ fontSize: '0.75rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 0.75, color: textMuted }}>
-                <Users size={14} color={textMuted} />
-                <Box component="span">{session.participants?.length || 1} <Box component="span" sx={{ opacity: 0.4 }}>/</Box> {session.maxParticipants || '∞'}</Box>
-              </Typography>
-              <Tooltip title="Fullscreen Whiteboard">
-                <IconButton size="small" onClick={toggleFullscreen} sx={{ color: textMuted, borderRadius: 1, '&:hover': { bgcolor: isDark ? '#2c2c2c' : '#f4f4f5', color: textColor }, transition: 'all 0.2s', ml: 0.5 }}>
-                  <Maximize size={14} />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Leave & See Stats">
-                <IconButton size="small" onClick={leaveRoom} sx={{ color: '#ef4444', borderRadius: 1, '&:hover': { bgcolor: '#ef444422' }, transition: 'all 0.2s' }}>
-                  <LogOut size={14} />
-                </IconButton>
-              </Tooltip>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              background: T.bgGlass, border: `1px solid ${T.borderSub}`,
+              borderRadius: 8, padding: '4px 8px', backdropFilter: 'blur(12px)',
+            }}>
+              <Users size={12} color={T.textMuted} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: T.text }}>
+                {session.participants?.length || 1}
+                <span style={{ color: T.textMuted }}>/{session.maxParticipants || '∞'}</span>
+              </span>
+            </div>
 
-              {/* Report & Leave — Trust & Safety */}
-              <Tooltip title="Report user & leave room">
-                <IconButton
-                  size="small"
-                  onClick={() => setShowReportModal(true)}
-                  sx={{
-                    color: '#ef4444', borderRadius: 1,
-                    bgcolor: 'rgba(239,68,68,0.08)',
-                    border: '1px solid rgba(239,68,68,0.25)',
-                    '&:hover': { bgcolor: 'rgba(239,68,68,0.18)', borderColor: 'rgba(239,68,68,0.5)' },
-                    transition: 'all 0.2s', ml: 0.5,
-                  }}
-                >
-                  <ShieldAlert size={14} />
-                </IconButton>
-              </Tooltip>
-            </Box>
-          </Box>
-        </Box>
+            {/* Panel Toggle */}
+            <motion.button
+              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              onClick={() => setShowPanel(v => !v)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 12px', borderRadius: 10,
+                background: showPanel ? T.primaryL : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${showPanel ? T.primaryB : T.borderSub}`,
+                color: showPanel ? T.primary : T.textMuted,
+                cursor: 'pointer', fontSize: 11, fontWeight: 700,
+                transition: 'all 0.3s ease',
+              }}
+            >
+              <Sparkles size={12} />
+              {showPanel ? 'Hide Panel' : 'Show Panel'}
+            </motion.button>
 
-        {/* Whiteboard */}
-        <Box ref={whiteboardRef} sx={{ position: 'absolute', inset: 0, zIndex: 10, bgcolor: 'transparent' }}>
+            {/* Separator */}
+            <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
+
+            {/* Actions */}
+            <motion.button
+              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              onClick={toggleFullscreen}
+              style={{
+                width: 34, height: 34, borderRadius: 10,
+                background: 'rgba(255,255,255,0.05)', border: `1px solid ${T.borderSub}`,
+                color: T.textMuted, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <Maximize size={14} />
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.05, background: 'rgba(239,68,68,0.18)' }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowReportModal(true)}
+              style={{
+                width: 34, height: 34, borderRadius: 10,
+                background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+                color: '#ef4444', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.3s ease',
+              }}
+            >
+              <ShieldAlert size={14} />
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              onClick={leaveRoom}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 14px', borderRadius: 10,
+                background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                color: '#f87171', cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                transition: 'all 0.3s ease',
+              }}
+            >
+              <LogOut size={13} />
+              Leave
+            </motion.button>
+          </div>
+        </div>
+
+        {/* ── Whiteboard canvas ── */}
+        <div ref={whiteboardRef} style={{ position: 'absolute', inset: 0, zIndex: 10 }}>
           {socket && <SharedWhiteboard roomId={id} socket={socket} />}
-        </Box>
+        </div>
 
-        {/* Video Dock */}
-        <Box sx={{ position: 'absolute', inset: 0, zIndex: 50, pointerEvents: 'none' }}>
-          {socket && <VideoRoom roomId={id} socket={socket} onTogglePanel={() => setShowPanel(!showPanel)} showPanel={showPanel} />}
-        </Box>
-      </Box>
+        {/* ── Video dock ── */}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 50, pointerEvents: 'none' }}>
+          {socket && (
+            <VideoRoom
+              roomId={id}
+              socket={socket}
+              onTogglePanel={() => setShowPanel(v => !v)}
+              showPanel={showPanel}
+            />
+          )}
+        </div>
+      </div>
 
-      {/* Side Panel */}
+      {/* ── Side Panel ── */}
       <AnimatePresence>
         {showPanel && (
           <motion.div
-            initial={{ x: 400, opacity: 0 }}
+            initial={{ x: 380, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 400, opacity: 0 }}
-            transition={{ type: 'spring', damping: 28, stiffness: 220 }}
+            exit={{ x: 380, opacity: 0 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 240 }}
             style={{
-              position: 'absolute', right: 24, top: 80, bottom: 80, width: 340,
-              borderRadius: '12px', background: surfaceColor,
-              border: `1px solid ${borderColor}`,
-              boxShadow: isDark ? '0 12px 32px rgba(0,0,0,0.4)' : '0 12px 32px rgba(0,0,0,0.1)',
-              display: 'flex', flexDirection: 'column', zIndex: 60, overflow: 'hidden'
+              position: 'relative', width: 360, flexShrink: 0,
+              height: '100%', display: 'flex', flexDirection: 'column',
+              zIndex: 60, overflow: 'hidden',
+              background: 'rgba(15,23,42,0.92)',
+              backdropFilter: 'blur(24px)',
+              borderLeft: `1px solid ${T.border}`,
+              boxShadow: '-8px 0 32px rgba(0,0,0,0.4)',
             }}
           >
-            <Box sx={{ p: 1.5, flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5, overflowY: 'hidden' }}>
+            {/* Panel header */}
+            <div style={{
+              padding: '16px 16px 0',
+              background: 'linear-gradient(180deg, rgba(99,102,241,0.08) 0%, transparent 100%)',
+              borderBottom: `1px solid ${T.borderSub}`,
+              paddingBottom: 0,
+            }}>
+              {/* Tab bar */}
+              <div style={{
+                display: 'flex', gap: 2, padding: '0 0 0 0',
+                overflowX: 'auto',
+              }}>
+                {TABS.map(tab => {
+                  const Icon = tab.icon;
+                  const active = activeTab === tab.key;
+                  return (
+                    <motion.button
+                      key={tab.key}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => setActiveTab(tab.key)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        padding: '8px 11px 10px',
+                        borderRadius: '10px 10px 0 0',
+                        cursor: 'pointer', fontSize: 11, fontWeight: 700,
+                        whiteSpace: 'nowrap', flexShrink: 0,
+                        background: active ? T.bgCard : 'transparent',
+                        color: active ? tab.color : T.textDim,
+                        border: active ? `1px solid ${T.border}` : '1px solid transparent',
+                        borderBottom: active ? `1px solid ${T.bgCard}` : '1px solid transparent',
+                        transition: 'all 0.2s ease',
+                        position: 'relative', bottom: -1,
+                      }}
+                    >
+                      <Icon size={12} />
+                      {tab.label}
+                      {active && (
+                        <motion.div
+                          layoutId="tab-indicator"
+                          style={{
+                            position: 'absolute', bottom: -1, left: 0, right: 0,
+                            height: 2, background: tab.color, borderRadius: '2px 2px 0 0',
+                          }}
+                        />
+                      )}
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </div>
 
-              {/* Tabs Nav */}
-              <Box sx={{ display: 'flex', p: 0.5, bgcolor: isDark ? '#27272a' : '#f4f4f5', borderRadius: '8px', border: `1px solid ${borderColor}`, gap: 0.25, flexShrink: 0 }}>
-                {TABS.map(tab => (
-                  <Button key={tab.key} fullWidth onClick={() => setActiveTab(tab.key)}
-                    sx={{
-                      borderRadius: '6px', minWidth: 0,
-                      bgcolor: activeTab === tab.key ? (isDark ? '#3f3f46' : '#ffffff') : 'transparent',
-                      color: activeTab === tab.key ? textColor : textMuted,
-                      py: 0.6, fontWeight: 600, fontSize: '0.58rem', textTransform: 'uppercase', letterSpacing: 0.5,
-                      boxShadow: activeTab === tab.key ? (isDark ? '0 1px 2px rgba(0,0,0,0.3)' : '0 1px 2px rgba(0,0,0,0.05)') : 'none',
-                      transition: 'all 0.2s', '&:hover': { bgcolor: activeTab === tab.key ? undefined : (isDark ? '#3f3f46' : '#e4e4e7') },
-                      display: 'flex', gap: 0.5, alignItems: 'center',
-                    }}
-                  >
-                    {tab.icon}{tab.label}
-                  </Button>
-                ))}
-              </Box>
+            {/* Tab content area */}
+            <div style={{
+              flex: 1, overflowY: 'auto', padding: '12px',
+              display: 'flex', flexDirection: 'column', gap: 10,
+              background: T.bgCard,
+              scrollbarWidth: 'thin',
+              scrollbarColor: `${T.primaryB} transparent`,
+            }}>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2 }}
+                  style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}
+                >
 
-              {/* Tab Content */}
-              <Box sx={{ flex: 1, overflowY: 'auto', '&::-webkit-scrollbar': { width: 4 }, '&::-webkit-scrollbar-thumb': { bgcolor: borderColor, borderRadius: 10 }, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                  {/* ── Chat tab ── */}
+                  {activeTab === 'chat' && (
+                    <>
+                      <PomodoroCard {...sharedProps} />
+                      <RaiseHandCard {...sharedProps} />
+                      <div style={{ flex: 1, minHeight: 280 }}>
+                        {socket && <StudyRoomChat socket={socket} roomId={id} />}
+                      </div>
+                    </>
+                  )}
 
-                {activeTab === 'chat' && (
-                  <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                    {/* Compact tools above chat */}
-                    <GroupPomodoro {...sharedProps} />
-                    <RaiseHand {...sharedProps} />
-                    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                      {socket && <StudyRoomChat socket={socket} roomId={id} />}
-                    </Box>
-                  </Box>
-                )}
-
-                {activeTab === 'notes' && (
-                  <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  {/* ── Files tab ── */}
+                  {activeTab === 'notes' && (
                     <NotesUploader session={session} setSession={setSession} />
-                  </Box>
-                )}
+                  )}
 
-                {activeTab === 'collab' && (
-                  <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
-                    {socket && <CollabNotes roomId={id} sessionId={id} socket={socket} />}
-                  </Box>
-                )}
+                  {/* ── Collab Notes tab ── */}
+                  {activeTab === 'collab' && socket && (
+                    <CollabNotes roomId={id} sessionId={id} socket={socket} />
+                  )}
 
-                {activeTab === 'tools' && (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                    <LivePoll {...sharedProps} />
-                    <AmbientMusic isDark={isDark} />
-                    <RoomLeaderboard socket={socket} roomId={id} isDark={isDark} />
-                    <TaskBoard socket={socket} roomId={id} isDark={isDark} />
-                  </Box>
-                )}
+                  {/* ── Tasks tab ── */}
+                  {activeTab === 'tasks' && (
+                    <TaskBoard socket={socket} roomId={id} isDark={true} />
+                  )}
 
-              </Box>
-            </Box>
+                  {/* ── Tools tab ── */}
+                  {activeTab === 'tools' && (
+                    <>
+                      <LivePoll {...sharedProps} />
+                      <AmbientMusic isDark={true} />
+                      <RoomLeaderboard socket={socket} roomId={id} isDark={true} />
+                    </>
+                  )}
+
+                  {/* ── Arcade tab ── */}
+                  {activeTab === 'arcade' && (
+                    <ArcadeSidebar isDark={true} />
+                  )}
+
+                </motion.div>
+              </AnimatePresence>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </Box>
+
+      {/* Global style: pulse anim */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { box-shadow: 0 0 8px #22C55E; opacity: 1; }
+          50%       { box-shadow: 0 0 16px #22C55E; opacity: 0.6; }
+        }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.5); }
+      `}</style>
+    </div>
+  );
+}
+
+// ─── Inline Pomodoro card (styled) ───────────────────────────────
+function PomodoroCard(props) {
+  return (
+    <div style={{
+      background: 'rgba(99,102,241,0.08)', border: `1px solid rgba(99,102,241,0.2)`,
+      borderRadius: 14, overflow: 'hidden',
+    }}>
+      <div style={{
+        padding: '8px 12px', borderBottom: '1px solid rgba(99,102,241,0.12)',
+        display: 'flex', alignItems: 'center', gap: 6,
+      }}>
+        <Timer size={13} color={T.primary} />
+        <span style={{ fontSize: 11, fontWeight: 800, color: T.primary, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+          Group Pomodoro
+        </span>
+      </div>
+      <div style={{ padding: '0 4px 4px' }}>
+        <GroupPomodoro {...props} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Inline Raise-hand card (styled) ─────────────────────────────
+function RaiseHandCard(props) {
+  return (
+    <div style={{
+      background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.18)',
+      borderRadius: 14, overflow: 'hidden',
+    }}>
+      <div style={{
+        padding: '8px 12px', borderBottom: '1px solid rgba(245,158,11,0.12)',
+        display: 'flex', alignItems: 'center', gap: 6,
+      }}>
+        <Hand size={13} color={T.accent2} />
+        <span style={{ fontSize: 11, fontWeight: 800, color: T.accent2, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+          Raise Hand
+        </span>
+      </div>
+      <div style={{ padding: '0 4px 4px' }}>
+        <RaiseHand {...props} />
+      </div>
+    </div>
   );
 }

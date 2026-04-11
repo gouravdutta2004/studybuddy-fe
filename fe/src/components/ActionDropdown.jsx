@@ -19,6 +19,8 @@ export default function ActionDropdown({ options = [] }) {
     ]
   });
 
+  const { setReference, setFloating } = refs;
+
   const click = useClick(context);
   const dismiss = useDismiss(context);
   const role = useRole(context);
@@ -29,7 +31,7 @@ export default function ActionDropdown({ options = [] }) {
 
   return (
     <>
-      <div ref={refs.setReference} {...getReferenceProps()} className="inline-flex items-center justify-center">
+      <div ref={setReference} {...getReferenceProps()} className="inline-flex items-center justify-center">
         <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: 'white', bgcolor: 'rgba(255,255,255,0.1)' } }}>
           <MoreVertical size={20} />
         </IconButton>
@@ -39,7 +41,7 @@ export default function ActionDropdown({ options = [] }) {
         <AnimatePresence>
           {isOpen && (
             <div
-              ref={refs.setFloating}
+              ref={setFloating}
               style={floatingStyles}
               {...getFloatingProps()}
               className="z-[9999] bg-slate-800/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden min-w-[160px] p-1.5 flex flex-col gap-1"

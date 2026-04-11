@@ -139,17 +139,22 @@ export default function FocusAuditor({ session, socket, userId }) {
       if (e.error === 'no-speech') return; // Ignore silence events
     };
 
-    recognition.onend = () => {
+    const restartRecognition = () => {
       // Auto-restart to maintain continuous monitoring
       if (recognitionRef.current) {
         try { recognitionRef.current.start(); } catch {}
       }
     };
 
+    recognition.onend = restartRecognition;
+
     try {
       recognition.start();
       setIsActive(true);
     } catch { setIsSupported(false); }
+
+    const currentCountdownRef = countdownRef.current;
+    const currentWarningTimerRef = warningTimerRef.current;
 
     return () => {
       if (recognitionRef.current) {
@@ -157,8 +162,8 @@ export default function FocusAuditor({ session, socket, userId }) {
         try { recognitionRef.current.stop(); } catch {}
         recognitionRef.current = null;
       }
-      clearInterval(countdownRef.current);
-      clearTimeout(warningTimerRef.current);
+      clearInterval(currentCountdownRef);
+      clearTimeout(currentWarningTimerRef);
     };
   }, []);
 

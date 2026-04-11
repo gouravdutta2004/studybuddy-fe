@@ -35,11 +35,11 @@ export function useLevelUp() {
 }
 
 /* ── Particle ── */
-function Particle({ delay, duration, x, y, color, size }) {
+function Particle({ delay, duration, x, y, color, size, rotate }) {
   return (
     <motion.div
       initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
-      animate={{ x, y, opacity: 0, scale: 0, rotate: Math.random() * 720 - 360 }}
+      animate={{ x, y, opacity: 0, scale: 0, rotate }}
       transition={{ delay, duration, ease: 'easeOut' }}
       style={{
         position: 'absolute', top: '50%', left: '50%',
@@ -61,6 +61,7 @@ function generateParticles(count = 80) {
     y: (Math.random() - 0.5) * window.innerHeight * 0.9,
     color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
     size: 4 + Math.random() * 10,
+    rotate: Math.random() * 720 - 360,
   }));
 }
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../api/axios';
 import SessionCard from '../components/SessionCard';
 import { useAuth } from '../context/AuthContext';
-import { Calendar as CalendarIcon, Plus, X, Download, List as ListIcon, ChevronLeft, ChevronRight, Clock, MapPin, Video, Users, Zap, Terminal } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, X, Download, List as ListIcon, ChevronLeft, ChevronRight, Clock, MapPin, Video, Users, Zap, Terminal, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import RatingModal from '../components/RatingModal';
 import { Container, Typography, Box, Button, Tabs, Tab, Grid, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, FormControlLabel, Switch, CircularProgress, useTheme, ToggleButton, ToggleButtonGroup, Chip, Avatar } from '@mui/material';
@@ -50,7 +50,7 @@ export default function Sessions() {
   const handleJoin = async (id) => { try { await api.post(`/sessions/${id}/join`); toast.success('Joined Sprint Crew'); fetchSessions(); } catch (err) { toast.error(err.response?.data?.message || 'Failure'); } };
   const handleLeave = async (id) => {
     try {
-      const sessionToRate = [...sessions, ...mySessions].find(s => s._id === id);
+      const sessionToRate = [...sessions, ...mySessions].find(s => (s._id || s.id) === id);
       await api.post(`/sessions/${id}/leave`); toast.success('Aborted Sprint'); fetchSessions();
       if (sessionToRate) setRatingSession(sessionToRate);
     } catch (err) { toast.error(err.response?.data?.message || 'Failure'); }
@@ -70,6 +70,21 @@ export default function Sessions() {
   };
 
   const displaySessions = tabIndex === 0 ? sessions : mySessions;
+
+  const checkConflict = (session) => {
+    if (tabIndex !== 0) return null; // Only check for Global Sprints
+    if (session.participants?.some(p => (p._id || p) === user?._id)) return null; // Already in it
+
+    const start = new Date(session.scheduledAt);
+    const end = new Date(start.getTime() + (session.duration || 60) * 60000);
+
+    return mySessions.find(s => {
+      const sStart = new Date(s.scheduledAt);
+      const sEnd = new Date(sStart.getTime() + (s.duration || 60) * 60000);
+      return (start < sEnd && end > sStart);
+    });
+  };
+
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
   const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
   const monthStart = startOfMonth(currentMonth);
@@ -128,6 +143,14 @@ export default function Sessions() {
           <IconButton onClick={() => setShowForm(false)} size="small" sx={{ color: '#022c22' }}><X size={18} /></IconButton>
         </Box>
         <DialogContent dividers sx={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
+          {form.scheduledAt && checkConflict({ scheduledAt: form.scheduledAt, duration: form.duration || 60 }) && (
+            <Box sx={{ mb: 2, p: 1.5, bgcolor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <AlertTriangle size={18} color="#ef4444" />
+              <Typography sx={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: 900, fontFamily: 'monospace' }}>
+                SCHEDULE CONFLICT: ALREADY IN "{checkConflict({ scheduledAt: form.scheduledAt, duration: form.duration || 60 }).title}"
+              </Typography>
+            </Box>
+          )}
           <Box component="form" id="create-session-form" onSubmit={handleCreate} sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 1 }}>
             <TextField label="Sprint Designation (Title)" required fullWidth value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} variant="outlined" size="small" />
             <TextField label="Subject Matter" required fullWidth value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} variant="outlined" size="small" />
@@ -207,11 +230,27 @@ export default function Sessions() {
             </DialogContent>
             <DialogActions sx={{ p: 3, pt: 1 }}>
               {calendarSessionObj.participants?.some(p => p._id === user?._id || p === user?._id) ? (
-                <Button fullWidth variant="outlined" color="error" onClick={() => { handleLeave(calendarSessionObj._id); setCalendarSessionObj(null); }} sx={{ borderRadius: '8px', fontWeight: 900, fontStyle: 'italic' }}>Abort Sprint</Button>
+                <Button fullWidth variant="outlined" color="error" onClick={() => { handleLeave((calendarSessionObj._id || calendarSessionObj.id)); setCalendarSessionObj(null); }} sx={{ borderRadius: '8px', fontWeight: 900, fontStyle: 'italic' }}>Abort Sprint</Button>
               ) : calendarSessionObj.host?._id === user?._id ? (
-                <Button fullWidth variant="outlined" color="error" onClick={() => { handleDelete(calendarSessionObj._id); setCalendarSessionObj(null); }} sx={{ borderRadius: '8px', fontWeight: 900, fontStyle: 'italic' }}>Scuttle Sprint</Button>
+                <Button fullWidth variant="outlined" color="error" onClick={() => { handleDelete((calendarSessionObj._id || calendarSessionObj.id)); setCalendarSessionObj(null); }} sx={{ borderRadius: '8px', fontWeight: 900, fontStyle: 'italic' }}>Scuttle Sprint</Button>
               ) : (
-                <Button fullWidth variant="contained" onClick={() => { handleJoin(calendarSessionObj._id); setCalendarSessionObj(null); }} sx={{ bgcolor: '#10b981', color: '#022c22', borderRadius: '8px', fontWeight: 900, fontStyle: 'italic', '&:hover': { bgcolor: '#34d399' } }}>Join Sprint</Button>
+                <Box sx={{ width: '100%' }}>
+                  {checkConflict(calendarSessionObj) ? (
+                    <Box sx={{ p: 1.5, bgcolor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                      <AlertTriangle size={18} color="#ef4444" />
+                      <Box>
+                        <Typography sx={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: 900, fontFamily: 'monospace' }}>
+                          SCHEDULE CONFLICT
+                        </Typography>
+                        <Typography sx={{ color: 'text.secondary', fontSize: '0.65rem', fontWeight: 800 }}>
+                          Conflicts with: {checkConflict(calendarSessionObj).title}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  ) : (
+                    <Button fullWidth variant="contained" onClick={() => { handleJoin((calendarSessionObj._id || calendarSessionObj.id)); setCalendarSessionObj(null); }} sx={{ bgcolor: '#10b981', color: '#022c22', borderRadius: '8px', fontWeight: 900, fontStyle: 'italic', '&:hover': { bgcolor: '#34d399' } }}>Join Sprint</Button>
+                  )}
+                </Box>
               )}
             </DialogActions>
           </>
@@ -232,7 +271,7 @@ export default function Sessions() {
           gap: 3,
         }}>
           {displaySessions.map(s => (
-            <Box key={s._id} sx={{
+            <Box key={(s._id || s.id)} sx={{
               bgcolor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.7)',
               backdropFilter: 'blur(24px)',
               border: '1px solid',
@@ -251,7 +290,14 @@ export default function Sessions() {
                 borderColor: 'rgba(99,102,241,0.3)',
               },
             }}>
-              <SessionCard session={s} currentUserId={user?._id} onJoin={handleJoin} onLeave={handleLeave} onDelete={handleDelete} />
+              <SessionCard
+                session={s}
+                currentUserId={user?._id}
+                onJoin={handleJoin}
+                onLeave={handleLeave}
+                onDelete={handleDelete}
+                conflictingSession={checkConflict(s)}
+              />
             </Box>
           ))}
         </Box>

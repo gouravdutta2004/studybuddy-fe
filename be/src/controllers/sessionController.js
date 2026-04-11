@@ -4,6 +4,29 @@ const { checkAndCompleteQuest } = require('../utils/questEngine');
 const createSession = async (req, res) => {
   try {
     const { title, description, subject, scheduledAt, duration, isOnline, meetingLink, location, maxParticipants, recurrence } = req.body;
+
+    // Check for schedule conflicts for the host
+    const userSessions = await Session.find({
+      participants: req.user._id,
+      status: { $in: ['upcoming', 'ongoing'] }
+    });
+
+    const sessionStart = new Date(scheduledAt);
+    const sessionEnd = new Date(sessionStart.getTime() + (duration || 60) * 60000);
+
+    const conflict = userSessions.find(s => {
+      const sStart = new Date(s.scheduledAt);
+      const sEnd = new Date(sStart.getTime() + (s.duration || 60) * 60000);
+      return (sessionStart < sEnd && sessionEnd > sStart);
+    });
+
+    if (conflict) {
+      return res.status(400).json({
+        message: `Schedule Conflict: You already have "${conflict.title}" at this time.`,
+        conflict: conflict.title
+      });
+    }
+
     const session = await Session.create({
       title, description, subject, scheduledAt, duration, isOnline, meetingLink, location, maxParticipants, recurrence: recurrence || 'NONE',
       host: req.user._id,
@@ -81,7 +104,31 @@ const joinSession = async (req, res) => {
   try {
     const session = await Session.findById(req.params.id);
     if (!session) return res.status(404).json({ message: 'Session not found' });
-    // Already a participant — just return success (idempotent join)
+
+    // Check for schedule conflicts
+    const userSessions = await Session.find({
+      _id: { $ne: session._id },
+      participants: req.user._id,
+      status: { $in: ['upcoming', 'ongoing'] }
+    });
+
+    const sessionStart = new Date(session.scheduledAt);
+    const sessionEnd = new Date(sessionStart.getTime() + session.duration * 60000);
+
+    const conflict = userSessions.find(s => {
+      const sStart = new Date(s.scheduledAt);
+      const sEnd = new Date(sStart.getTime() + s.duration * 60000);
+      return (sessionStart < sEnd && sessionEnd > sStart);
+    });
+
+    if (conflict) {
+      return res.status(400).json({
+        message: `Schedule Conflict: You are already in "${conflict.title}" at this time.`,
+        conflict: conflict.title
+      });
+    }
+
+    // Already a participant
     if (session.participants.map(p => p.toString()).includes(req.user._id.toString())) {
       return res.json({ message: 'Already joined', alreadyMember: true });
     }

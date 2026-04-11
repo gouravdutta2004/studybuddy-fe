@@ -1,9 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Mic, MicOff, Video, VideoOff, MessageSquare, PhoneOff, MonitorUp } from 'lucide-react';
-import { Box, IconButton, Typography, useTheme } from '@mui/material';
+import { Box, IconButton, Typography } from '@mui/material';
+
+const ICE_SERVERS = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
+    { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" },
+    { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" }
+  ]
+};
 
 export default function VideoRoom({ roomId, socket, onTogglePanel, showPanel }) {
-  const theme = useTheme();
   const localVideoRef = useRef();
   const remoteVideoesRef = useRef({});
   const peerConnections = useRef({});
@@ -13,18 +22,43 @@ export default function VideoRoom({ roomId, socket, onTogglePanel, showPanel }) 
   const [micOn, setMicOn] = useState(true);
   const [videoOn, setVideoOn] = useState(true);
 
-  const iceServers = {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
-      { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" },
-      { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" }
-    ]
-  };
-
   useEffect(() => {
     if (!socket) return;
+    let localStream = null;
+
+    function createPeer(userToSignal, callerID, currentStream) {
+      const peer = new RTCPeerConnection(ICE_SERVERS);
+      currentStream.getTracks().forEach(track => peer.addTrack(track, currentStream));
+      peer.onicecandidate = (e) => {
+        if (e.candidate && socket) socket.emit('webrtc_signal', { to: userToSignal, signal: e.candidate });
+      };
+      peer.ontrack = (e) => {
+         const remoteStream = e.streams[0];
+         if (remoteVideoesRef.current[userToSignal]) remoteVideoesRef.current[userToSignal].srcObject = remoteStream;
+      };
+      peer.createOffer().then(offer => {
+        peer.setLocalDescription(offer);
+        if (socket) socket.emit('webrtc_signal', { to: userToSignal, signal: offer });
+      });
+      return peer;
+    }
+
+    function addPeer(incomingSignal, callerID, currentStream) {
+      const peer = new RTCPeerConnection(ICE_SERVERS);
+      currentStream.getTracks().forEach(track => peer.addTrack(track, currentStream));
+      peer.onicecandidate = (e) => {
+        if (e.candidate && socket) socket.emit('webrtc_signal', { to: callerID, signal: e.candidate });
+      };
+      peer.ontrack = (e) => {
+         const remoteStream = e.streams[0];
+         if (remoteVideoesRef.current[callerID]) remoteVideoesRef.current[callerID].srcObject = remoteStream;
+      };
+      peer.setRemoteDescription(new RTCSessionDescription(incomingSignal)).then(() => peer.createAnswer()).then(answer => {
+        peer.setLocalDescription(answer);
+        if (socket) socket.emit('webrtc_signal', { to: callerID, signal: answer });
+      });
+      return peer;
+    }
 
     // 1. Get local media
     navigator.mediaDevices.getUserMedia({
@@ -37,6 +71,7 @@ export default function VideoRoom({ roomId, socket, onTogglePanel, showPanel }) 
       },
     })
       .then((currentStream) => {
+        localStream = currentStream;
         setStream(currentStream);
         if (localVideoRef.current) localVideoRef.current.srcObject = currentStream;
 
@@ -63,54 +98,21 @@ export default function VideoRoom({ roomId, socket, onTogglePanel, showPanel }) 
 
         socket.on('user_ready_for_webrtc', onUserReady);
         socket.on('webrtc_signal', onWebrtcSignal);
-
-        return () => {
-          socket.off('user_ready_for_webrtc', onUserReady);
-          socket.off('webrtc_signal', onWebrtcSignal);
-        };
       })
       .catch((err) => {
         console.error("Local stream error", err);
       });
 
     return () => {
-      stream?.getTracks().forEach(track => track.stop());
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      Object.values(peerConnections.current).forEach(peer => peer.close());
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      peerConnections.current = {};
     };
   }, [roomId, socket]);
-
-  function createPeer(userToSignal, callerID, currentStream) {
-    const peer = new RTCPeerConnection(iceServers);
-    currentStream.getTracks().forEach(track => peer.addTrack(track, currentStream));
-    peer.onicecandidate = (e) => {
-      if (e.candidate && socket) socket.emit('webrtc_signal', { to: userToSignal, signal: e.candidate });
-    };
-    peer.ontrack = (e) => {
-       const remoteStream = e.streams[0];
-       if (remoteVideoesRef.current[userToSignal]) remoteVideoesRef.current[userToSignal].srcObject = remoteStream;
-    };
-    peer.createOffer().then(offer => {
-      peer.setLocalDescription(offer);
-      if (socket) socket.emit('webrtc_signal', { to: userToSignal, signal: offer });
-    });
-    return peer;
-  }
-
-  function addPeer(incomingSignal, callerID, currentStream) {
-    const peer = new RTCPeerConnection(iceServers);
-    currentStream.getTracks().forEach(track => peer.addTrack(track, currentStream));
-    peer.onicecandidate = (e) => {
-      if (e.candidate && socket) socket.emit('webrtc_signal', { to: callerID, signal: e.candidate });
-    };
-    peer.ontrack = (e) => {
-       const remoteStream = e.streams[0];
-       if (remoteVideoesRef.current[callerID]) remoteVideoesRef.current[callerID].srcObject = remoteStream;
-    };
-    peer.setRemoteDescription(new RTCSessionDescription(incomingSignal)).then(() => peer.createAnswer()).then(answer => {
-      peer.setLocalDescription(answer);
-      if (socket) socket.emit('webrtc_signal', { to: callerID, signal: answer });
-    });
-    return peer;
-  }
 
   const toggleMic = () => {
     if (stream) {

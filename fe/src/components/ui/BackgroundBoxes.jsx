@@ -3,10 +3,10 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export const BoxesCore = ({ className, ...rest }) => {
-  const rows = new Array(150).fill(1);
-  const cols = new Array(100).fill(1);
+  const rows = React.useMemo(() => new Array(150).fill(1), []);
+  const cols = React.useMemo(() => new Array(100).fill(1), []);
 
-  const colors = [
+  const colors = React.useMemo(() => [
     "rgb(125 211 252)", // sky-300
     "rgb(249 168 212)", // pink-300
     "rgb(134 239 172)", // green-300
@@ -16,11 +16,16 @@ export const BoxesCore = ({ className, ...rest }) => {
     "rgb(147 197 253)", // blue-300
     "rgb(165 180 252)", // indigo-300
     "rgb(196 181 253)", // violet-300
-  ];
+  ], []);
 
-  const getRandomColor = () => {
+  const getRandomColor = React.useCallback(() => {
     return colors[Math.floor(Math.random() * colors.length)];
-  };
+  }, [colors]);
+
+  // Pre-calculate hover colors to avoid Math.random() in render loop
+  const cellColors = React.useMemo(() => {
+    return rows.map(() => cols.map(() => colors[Math.floor(Math.random() * colors.length)]));
+  }, [rows, cols, colors]);
 
   return (
     <div
@@ -41,7 +46,7 @@ export const BoxesCore = ({ className, ...rest }) => {
           {cols.map((_, j) => (
             <motion.div
               whileHover={{
-                backgroundColor: getRandomColor(),
+                backgroundColor: cellColors[i][j],
                 transition: { duration: 0 },
               }}
               animate={{

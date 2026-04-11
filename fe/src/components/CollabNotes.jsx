@@ -4,46 +4,24 @@ import { useTheme } from '@mui/material';
 import { motion } from 'framer-motion';
 import { FileText, Save, Users, Eye, Edit3 } from 'lucide-react';
 import api from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 const DEBOUNCE_MS = 400;
 
 export default function CollabNotes({ roomId, socket, sessionId }) {
+  const { user } = useAuth();
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const [content, setContent] = useState('');
   const [preview, setPreview] = useState(false);
   const [editorCount, setEditorCount] = useState(1);
+  const [typingUsers, setTypingUsers] = useState(new Map());
   const [saved, setSaved] = useState(true);
   const debounceRef = useRef(null);
+  const typingDebounceRef = useRef(null);
   const textareaRef = useRef(null);
-  const initReceivedRef = useRef(false); // track if socket init fired
-
-
-  // Receive initial notes from server when joining room
-  useEffect(() => {
-    if (!socket) return;
-    const handleInit = ({ content: c }) => {
-      initReceivedRef.current = true;
-      if (c) setContent(c);
-    };
-    socket.on('collab_notes_init', handleInit);
-    return () => socket.off('collab_notes_init', handleInit);
-  }, [socket]);
-
-  // Fallback: load from DB if socket init didn't fire (e.g. reconnection)
-  useEffect(() => {
-    const sid = sessionId || roomId;
-    if (!sid) return;
-    const timer = setTimeout(() => {
-      if (!initReceivedRef.current) {
-        api.get(`/sessions/${sid}/collab-notes`)
-          .then(r => { if (r.data.collabNotes) setContent(r.data.collabNotes); })
-          .catch(() => {}); // silently ignore if endpoint unavailable
-      }
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [sessionId, roomId]);
+  const initReceivedRef = useRef(false);
 
   // Receive real-time updates from peers
   useEffect(() => {
@@ -52,9 +30,22 @@ export default function CollabNotes({ roomId, socket, sessionId }) {
       setContent(c);
       setSaved(true);
     };
+    const handleTyping = ({ userId, userName, isTyping }) => {
+      if (userId === user?._id) return;
+      setTypingUsers(prev => {
+        const next = new Map(prev);
+        if (isTyping) next.set(userId, userName);
+        else next.delete(userId);
+        return next;
+      });
+    };
     socket.on('collab_notes_update', handleUpdate);
-    return () => socket.off('collab_notes_update', handleUpdate);
-  }, [socket]);
+    socket.on('room_typing', handleTyping);
+    return () => {
+      socket.off('collab_notes_update', handleUpdate);
+      socket.off('room_typing', handleTyping);
+    }
+  }, [socket, user?._id]);
 
   // Track active editors via room presence
   useEffect(() => {
@@ -74,12 +65,21 @@ export default function CollabNotes({ roomId, socket, sessionId }) {
     setContent(val);
     setSaved(false);
 
+    // Broadcast typing status
+    if (socket) {
+      socket.emit('room_typing', { roomId, userId: user?._id, userName: user?.name, isTyping: true });
+      clearTimeout(typingDebounceRef.current);
+      typingDebounceRef.current = setTimeout(() => {
+        socket.emit('room_typing', { roomId, userId: user?._id, isTyping: false });
+      }, 1500);
+    }
+
     // Debounced broadcast to peers
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       if (socket) socket.emit('collab_notes_update', { roomId, content: val });
     }, DEBOUNCE_MS);
-  }, [socket, roomId]);
+  }, [socket, roomId, user?._id, user?.name]);
 
   const handleSave = async () => {
     try {
@@ -123,6 +123,11 @@ export default function CollabNotes({ roomId, socket, sessionId }) {
           />
           {!saved && (
             <Typography sx={{ fontFamily: 'monospace', fontSize: '0.6rem', color: '#f59e0b', fontWeight: 700 }}>● unsaved</Typography>
+          )}
+          {typingUsers.size > 0 && (
+            <Typography sx={{ fontFamily: 'monospace', fontSize: '0.6rem', color: '#6366f1', fontWeight: 800, ml: 1 }}>
+              {Array.from(typingUsers.values()).join(', ')} is typing...
+            </Typography>
           )}
         </Box>
 

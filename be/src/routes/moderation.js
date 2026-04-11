@@ -47,11 +47,10 @@ router.post('/report', protect, async (req, res) => {
 
     if (!updated) return res.status(404).json({ message: 'Reported user not found' });
 
+    // Privacy: don't reveal internal trust scores to the reporter
     res.status(201).json({
       message: 'Report filed successfully. Thank you for keeping StudyFriend safe.',
       reportId: report._id,
-      targetStrikes: updated.trustStrikes,
-      targetShadowBanned: updated.isShadowBanned,
     });
   } catch (err) {
     // Duplicate report (unique index violation) — silently accept to avoid leaking info

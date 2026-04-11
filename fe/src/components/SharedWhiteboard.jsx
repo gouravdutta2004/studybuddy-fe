@@ -8,7 +8,26 @@ export default function SharedWhiteboard({ roomId, socket }) {
 
   useEffect(() => {
     if (!socket) return;
-    
+
+    // Request full state when joining
+    socket.emit('whiteboard_sync_request', { roomId });
+
+    const handleSyncRequest = ({ from }) => {
+      const snapshot = store.serialize();
+      socket.emit('whiteboard_sync_response', { to: from, state: snapshot, roomId });
+    };
+
+    const handleSyncResponse = ({ state }) => {
+      isUpdatingRef.current = true;
+      try {
+        store.deserialize(state);
+      } catch (err) {
+        console.error("TLDraw deserialize error", err);
+      } finally {
+        isUpdatingRef.current = false;
+      }
+    };
+
     const handleUpdate = (payload) => {
       if (!store) return;
       isUpdatingRef.current = true;
@@ -28,13 +47,19 @@ export default function SharedWhiteboard({ roomId, socket }) {
     };
 
     socket.on('whiteboard_update', handleUpdate);
+    socket.on('whiteboard_sync_request', handleSyncRequest);
+    socket.on('whiteboard_sync_response', handleSyncResponse);
+
     return () => {
       socket.off('whiteboard_update', handleUpdate);
+      socket.off('whiteboard_sync_request', handleSyncRequest);
+      socket.off('whiteboard_sync_response', handleSyncResponse);
     }
-  }, [socket, store]);
+  }, [socket, store, roomId]);
 
   useEffect(() => {
     if (!store || !socket) return;
+    let timeout = null;
     const unsub = store.listen((update) => {
       if (isUpdatingRef.current) return;
       const changes = { ...update.changes.added, ...update.changes.updated };
@@ -43,9 +68,19 @@ export default function SharedWhiteboard({ roomId, socket }) {
       
       if (records.length > 0 || removedIds.length > 0) {
         socket.emit('whiteboard_update', { roomId, elements: records, removed: removedIds });
+
+        // Debounced full state save for persistence (after inactivity)
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+          const fullState = store.serialize();
+          socket.emit('whiteboard_update', { roomId, fullState });
+        }, 3000);
       }
     }, { source: 'user', scope: 'document' });
-    return () => unsub();
+    return () => {
+      unsub();
+      clearTimeout(timeout);
+    };
   }, [store, roomId, socket]);
 
   const handleMount = (editor) => {

@@ -18,6 +18,8 @@ export default function FloatingTooltip({ children, content, placement = 'top' }
     ]
   });
 
+  const { setReference, setFloating } = refs;
+
   const hover = useHover(context, { move: false });
   const focus = useFocus(context);
   const dismiss = useDismiss(context);
@@ -29,14 +31,14 @@ export default function FloatingTooltip({ children, content, placement = 'top' }
 
   return (
     <>
-      <div ref={refs.setReference} {...getReferenceProps()} className="inline-flex">
+      <div ref={setReference} {...getReferenceProps()} className="inline-flex">
         {children}
       </div>
       <FloatingPortal>
         <AnimatePresence>
           {isOpen && (
             <div
-              ref={refs.setFloating}
+              ref={setFloating}
               style={floatingStyles}
               {...getFloatingProps()}
               className="z-[9999] px-3 py-2 text-sm font-semibold text-white bg-slate-900/80 backdrop-blur-md rounded-xl border border-white/10 shadow-lg pointer-events-none"

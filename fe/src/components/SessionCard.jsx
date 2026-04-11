@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Clock, Users, Video, MapPin, Trash2, LogIn, LogOut, ExternalLink, CalendarPlus, X, CheckCircle, Clock3, XCircle, Zap, Timer } from 'lucide-react';
+import { Clock, Users, Video, MapPin, Trash2, LogIn, LogOut, ExternalLink, CalendarPlus, X, CheckCircle, Clock3, XCircle, Zap, Timer, AlertTriangle } from 'lucide-react';
 import { format, addMinutes, differenceInSeconds } from 'date-fns';
 import { Link } from 'react-router-dom';
-import { Box, Typography, Button, IconButton, useTheme, Avatar, AvatarGroup } from '@mui/material';
+import { Box, Typography, Button, IconButton, useTheme, Avatar, AvatarGroup, Portal, Tooltip } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
 
 /* ── Sprint Card ── */
-export default function SessionCard({ session, currentUserId, onJoin, onLeave, onDelete }) {
+export default function SessionCard({ session, currentUserId, onJoin, onLeave, onDelete, conflictingSession }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const [isOpen, setIsOpen] = useState(false);
@@ -33,7 +33,7 @@ export default function SessionCard({ session, currentUserId, onJoin, onLeave, o
   }, [session.scheduledAt]);
 
   const handleRsvp = async (status) => {
-    try { await api.post(`/sessions/${session._id}/rsvp`, { status }); toast.success(`RSVP set to ${status}`); }
+    try { await api.post(`/sessions/${(session._id || session.id)}/rsvp`, { status }); toast.success(`RSVP set to ${status}`); }
     catch { toast.error('Failed to RSVP'); }
   };
 
@@ -51,7 +51,7 @@ export default function SessionCard({ session, currentUserId, onJoin, onLeave, o
 
   return (
     <>
-      <motion.div layoutId={`card-${session._id}`} onClick={() => !isOpen && setIsOpen(true)}
+      <motion.div layoutId={`card-${(session._id || session.id)}`} onClick={() => !isOpen && setIsOpen(true)}
         whileHover={{ y: -4, scale: 1.02 }} style={{ height: '100%', cursor: 'pointer' }}>
         <Box sx={{
           p: 2.5, height: '100%', borderRadius: '16px', display: 'flex', flexDirection: 'column',
@@ -65,6 +65,15 @@ export default function SessionCard({ session, currentUserId, onJoin, onLeave, o
             <motion.div initial={{ x: -100 }} animate={{ x: 0 }} style={{ position: 'absolute', top: 0, left: 0, background: '#ef4444', color: 'white', padding: '4px 12px', borderBottomRightRadius: '12px', fontWeight: 900, fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: 4, letterSpacing: 1 }}>
               <Zap size={12} fill="white" /> T-MINUS {countdown}
             </motion.div>
+          )}
+
+          {conflictingSession && !isParticipant && !isHost && (
+            <Tooltip title={`Conflicts with "${conflictingSession.title}"`} arrow>
+              <Box sx={{ position: 'absolute', top: 0, right: 0, bgcolor: 'rgba(239, 68, 68, 0.9)', color: 'white', px: 1, py: 0.5, borderBottomLeftRadius: '12px', display: 'flex', alignItems: 'center', gap: 0.5, zIndex: 1 }}>
+                <AlertTriangle size={14} />
+                <Typography sx={{ fontSize: '0.6rem', fontWeight: 900, fontFamily: 'monospace' }}>CONFLICT</Typography>
+              </Box>
+            </Tooltip>
           )}
 
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2, mt: countdown ? 2 : 0 }}>
@@ -92,16 +101,22 @@ export default function SessionCard({ session, currentUserId, onJoin, onLeave, o
         </Box>
       </motion.div>
 
-      <AnimatePresence>
-        {isOpen && (
-          <Box sx={{ position: 'fixed', inset: 0, zIndex: 1300, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsOpen(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(12px)' }} />
-            
-            <motion.div layoutId={`card-${session._id}`} style={{ background: isDark ? '#0d1117' : '#ffffff', border: '3px solid #6366f1', borderRadius: '24px', width: '100%', maxWidth: 500, zIndex: 1301, overflow: 'hidden', boxShadow: '0 0 40px rgba(99,102,241,0.4)', position: 'relative' }}>
-              {/* Sprint Striping Background */}
-              <Box sx={{ position: 'absolute', inset: 0, backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(99,102,241,0.03) 10px, rgba(99,102,241,0.03) 20px)', pointerEvents: 'none' }} />
+      <Portal>
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              initial={{ backgroundColor: 'rgba(0,0,0,0)' }}
+              animate={{ backgroundColor: 'rgba(0,0,0,0.8)' }}
+              exit={{ backgroundColor: 'rgba(0,0,0,0)' }}
+              style={{ position: 'fixed', inset: 0, zIndex: 1300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', backdropFilter: 'blur(12px)' }}
+            >
+              <Box onClick={() => setIsOpen(false)} sx={{ position: 'absolute', inset: 0 }} />
+              
+              <motion.div layoutId={`card-${(session._id || session.id)}`} style={{ background: isDark ? '#0d1117' : '#ffffff', border: '3px solid #6366f1', borderRadius: '24px', width: '100%', maxWidth: 500, zIndex: 1301, overflowY: 'auto', maxHeight: '90vh', boxShadow: '0 0 40px rgba(99,102,241,0.4)', position: 'relative' }}>
+                {/* Sprint Striping Background */}
+                <Box sx={{ position: 'absolute', inset: 0, backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(99,102,241,0.03) 10px, rgba(99,102,241,0.03) 20px)', pointerEvents: 'none' }} />
 
-              <Box sx={{ bgcolor: '#6366f1', p: 4, position: 'relative', color: 'white', borderBottom: '4px solid #4f46e5' }}>
+                <Box sx={{ bgcolor: '#6366f1', p: 4, position: 'relative', color: 'white', borderBottom: '4px solid #4f46e5', flexShrink: 0 }}>
                 <IconButton onClick={() => setIsOpen(false)} sx={{ position: 'absolute', top: 12, right: 12, color: 'white', bgcolor: 'rgba(0,0,0,0.2)', '&:hover': { bgcolor: 'rgba(0,0,0,0.4)' } }}><X size={20} /></IconButton>
                 <Typography sx={{ fontFamily: 'monospace', fontSize: '0.7rem', fontWeight: 900, letterSpacing: 3, mb: 1, color: 'rgba(255,255,255,0.7)' }}>{session.subject?.toUpperCase()} SPRINT</Typography>
                 <Typography sx={{ fontSize: '2rem', fontWeight: 900, fontStyle: 'italic', lineHeight: 1.1, letterSpacing: -1 }}>{session.title}</Typography>
@@ -141,13 +156,26 @@ export default function SessionCard({ session, currentUserId, onJoin, onLeave, o
 
                 <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                   {!isHost && !isParticipant && !isFull && (
-                    <Button variant="contained" fullWidth onClick={() => onJoin(session._id)} startIcon={<LogIn size={18} />} sx={{ fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', letterSpacing: 1, bgcolor: '#10b981', '&:hover': { bgcolor: '#059669' }, borderRadius: '8px' }}>Join Sprint</Button>
+                    <Box sx={{ width: '100%' }}>
+                      {conflictingSession ? (
+                        <Tooltip title={`Conflicts with "${conflictingSession.title}"`} arrow placement="top">
+                          <Box sx={{ p: 1.5, bgcolor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <AlertTriangle size={18} color="#ef4444" />
+                            <Typography sx={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 800, fontFamily: 'monospace' }}>
+                              SCHEDULE CONFLICT DETECTED
+                            </Typography>
+                          </Box>
+                        </Tooltip>
+                      ) : (
+                        <Button variant="contained" fullWidth onClick={() => onJoin((session._id || session.id))} startIcon={<LogIn size={18} />} sx={{ fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', letterSpacing: 1, bgcolor: '#10b981', '&:hover': { bgcolor: '#059669' }, borderRadius: '8px' }}>Join Sprint</Button>
+                      )}
+                    </Box>
                   )}
                   {isParticipant && !isHost && (
-                    <Button variant="outlined" color="error" fullWidth onClick={() => onLeave(session._id)} startIcon={<LogOut size={18} />} sx={{ fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', letterSpacing: 1, border: '2px solid', borderRadius: '8px' }}>Abort Sprint</Button>
+                    <Button variant="outlined" color="error" fullWidth onClick={() => onLeave((session._id || session.id))} startIcon={<LogOut size={18} />} sx={{ fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', letterSpacing: 1, border: '2px solid', borderRadius: '8px' }}>Abort Sprint</Button>
                   )}
                   {(isHost || isParticipant) && session.isOnline && (
-                    <Button component={Link} to={`/study-room/${session._id}`} variant="contained" fullWidth startIcon={<Zap size={18} />} sx={{ fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', letterSpacing: 1, background: 'linear-gradient(90deg,#6366f1,#8b5cf6)', borderRadius: '8px' }}>
+                    <Button component={Link} to={`/study-room/${(session._id || session.id)}`} variant="contained" fullWidth startIcon={<Zap size={18} />} sx={{ fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', letterSpacing: 1, background: 'linear-gradient(90deg,#6366f1,#8b5cf6)', borderRadius: '8px' }}>
                       Enter Neural Link
                     </Button>
                   )}
@@ -157,17 +185,18 @@ export default function SessionCard({ session, currentUserId, onJoin, onLeave, o
                     </Button>
                   )}
                   {isHost && (
-                    <Button color="error" fullWidth onClick={() => onDelete(session._id)} startIcon={<Trash2 size={18} />} sx={{ fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', letterSpacing: 1, border: '2px solid', borderRadius: '8px' }}>
+                    <Button color="error" fullWidth onClick={() => onDelete((session._id || session.id))} startIcon={<Trash2 size={18} />} sx={{ fontWeight: 900, textTransform: 'uppercase', fontStyle: 'italic', letterSpacing: 1, border: '2px solid', borderRadius: '8px' }}>
                       Scuttle Sprint
                     </Button>
                   )}
                 </Box>
               </Box>
 
+              </motion.div>
             </motion.div>
-          </Box>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+      </Portal>
     </>
   );
 }

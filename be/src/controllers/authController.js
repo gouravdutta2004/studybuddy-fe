@@ -12,6 +12,18 @@ const generateToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
 
+// Privacy: strip server-only fields before sending user to client on auth events
+const sanitizeForClient = (userObj) => {
+  const REMOVE = [
+    'resetPasswordToken', 'resetPasswordExpire',
+    'trustStrikes', 'isShadowBanned',
+    'verificationDetails', // internal institution verification meta
+  ];
+  const obj = { ...userObj };
+  REMOVE.forEach(k => delete obj[k]);
+  return obj;
+};
+
 const Organization = require('../models/Organization');
 
 const register = async (req, res) => {
@@ -61,7 +73,7 @@ const register = async (req, res) => {
       verificationStatus
     });
     
-    // Fire-and-forget: do NOT await — send email in background so response is instant
+    // Fire-and-forget welcome email
     Settings.findOne().then(settings => {
       const template = settings?.emailTemplateWelcome || "<h1>Welcome {name}!</h1><p>We are glad to have you.</p>";
       const welcomeHtml = template.replace(/{name}/g, user.name);
@@ -73,7 +85,8 @@ const register = async (req, res) => {
       }).catch(err => console.error('Welcome email dispatch suppressed:', err.message));
     }).catch(err => console.error('Settings query failed', err));
     
-    res.status(201).json({ token: generateToken(user._id, role.toLowerCase()), user });
+    // Privacy: sanitize before returning to client
+    res.status(201).json({ token: generateToken(user._id, role.toLowerCase()), user: sanitizeForClient(user.toJSON()) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -107,8 +120,8 @@ const login = async (req, res) => {
     if (!user.isActive)
       return res.status(403).json({ message: 'Account blocked by administrator' });
       
-    const userData = user.toJSON();
-    if (role === 'admin') userData.isAdmin = true; // Inject explicitly for frontend logic
+    const userData = sanitizeForClient(user.toJSON());
+    if (role === 'admin') userData.isAdmin = true;
     
     res.json({ token: generateToken(user._id, role), user: userData });
   } catch (err) {
@@ -133,7 +146,8 @@ const forgotPassword = async (req, res) => {
     }
     
     if (!user) {
-      return res.status(404).json({ message: 'There is no user with that email' });
+      // Privacy: always return 200 to prevent email enumeration attacks
+      return res.status(200).json({ success: true, message: 'If an account exists with that email, a reset link has been sent.' });
     }
 
     const resetToken = crypto.randomBytes(20).toString('hex');
@@ -309,7 +323,7 @@ const googleAuth = async (req, res) => {
 
     if (!user.isActive) return res.status(403).json({ message: 'Account blocked by administrator' });
 
-    const userData = user.toJSON();
+    const userData = sanitizeForClient(user.toJSON());
     if (role === 'admin') userData.isAdmin = true;
 
     res.json({ token: generateToken(user._id, role), user: userData });

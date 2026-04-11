@@ -5,9 +5,27 @@ const Subject = require('../models/Subject');
 const sendEmail = require('../utils/sendEmail');
 const { sendPushToUser } = require('../utils/pushNotification');
 
+const PUBLIC_FIELDS = [
+  'name', 'avatar', 'bio', 'subjects', 'educationLevel', 'university',
+  'studyStyle', 'availability', 'preferOnline', 'socialLinks',
+  'major', 'currentStreak', 'league', 'studyHours', 'streak',
+  'lastStudyDate', 'xp', 'level', 'badges', 'isVerified',
+  'activityLog', 'timezone', 'studyProfile', 'isActive'
+].join(' ');
+
 const getProfile = async (req, res) => {
   try {
-    let user = await User.findById(req.params.id).populate('connections', 'name avatar subjects university');
+    const isMe = req.user && req.user.id === req.params.id;
+    let userQuery = User.findById(req.params.id);
+    
+    // Privacy protection: only fetch specific fields if viewing another user
+    if (!isMe) {
+      userQuery = userQuery.select(PUBLIC_FIELDS);
+    } else {
+      userQuery = userQuery.populate('connections', 'name avatar subjects university');
+    }
+
+    let user = await userQuery;
     
     if (!user) {
       user = await Admin.findById(req.params.id);
@@ -77,13 +95,18 @@ const searchUsers = async (req, res) => {
     const { subject, location, educationLevel, studyStyle, name, _limit } = req.query;
     const limit = _limit ? Math.min(parseInt(_limit, 10), 50) : 50;
     const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const query = { _id: { $ne: req.user._id }, isActive: true, isAdmin: { $ne: true } };
+    
+    // Privacy: never return shadowbanned users in public search
+    const query = { _id: { $ne: req.user._id }, isActive: true, isAdmin: { $ne: true }, isShadowBanned: { $ne: true } };
+    
     if (subject) query.subjects = { $in: [new RegExp(escapeRegex(subject), 'i')] };
     if (location) query.location = new RegExp(escapeRegex(location), 'i');
     if (educationLevel) query.educationLevel = educationLevel;
     if (studyStyle) query.studyStyle = studyStyle;
     if (name) query.name = new RegExp(escapeRegex(name), 'i');
-    const users = await User.find(query).select('-password').limit(limit);
+    
+    // Privacy: only return standard public fields
+    const users = await User.find(query).select(PUBLIC_FIELDS).limit(limit);
     res.json(users);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -155,7 +178,14 @@ const getMatches = async (req, res) => {
       // Sort by the newly calculated score and consistency
       { $sort: { psychScore: -1, 'studyProfile.consistencyScore': -1 } },
       { $limit: isPro ? 20 : 3 }, // Feature 4 Paywall Limits
-      { $project: { password: 0 } }
+      // Privacy protection mask
+      { $project: {
+          name: 1, avatar: 1, bio: 1, subjects: 1, educationLevel: 1, university: 1,
+          studyStyle: 1, availability: 1, preferOnline: 1, socialLinks: 1,
+          major: 1, currentStreak: 1, league: 1, studyHours: 1, streak: 1,
+          lastStudyDate: 1, xp: 1, level: 1, badges: 1, isVerified: 1,
+          activityLog: 1, timezone: 1, studyProfile: 1, isActive: 1, psychScore: 1
+      }}
     ];
 
     const aggregatedMatches = await User.aggregate(pipeline);

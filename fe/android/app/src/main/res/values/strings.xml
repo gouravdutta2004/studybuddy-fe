@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">StudyFriend</string>
+    <string name="title_activity_main">StudyFriend</string>
+    <string name="package_name">com.studyfriend.app</string>
+    <string name="custom_url_scheme">com.studyfriend.app</string>
+</resources>
